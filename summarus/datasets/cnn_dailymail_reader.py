@@ -1,6 +1,7 @@
 import hashlib
 import os
 from typing import Iterable, Dict
+import pickle
 
 from allennlp.data.instance import Instance
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
@@ -37,7 +38,7 @@ def get_file_names_by_urls(cnn_tokenized_dir, dm_tokenized_dir, urls_file_path):
     with open(urls_file_path, "r", encoding="utf-8") as r:
         for url in r:
             url = url.strip()
-            file_name = os.path.join(cnn_tokenized_dir, str(hashhex(url)) + ".story")
+            file_name = str(hashhex(url)) + ".story"
             cnn_file_name = os.path.join(cnn_tokenized_dir, file_name)
             dm_file_name = os.path.join(dm_tokenized_dir, file_name)
             if os.path.isfile(cnn_file_name):
@@ -46,7 +47,7 @@ def get_file_names_by_urls(cnn_tokenized_dir, dm_tokenized_dir, urls_file_path):
             elif os.path.isfile(dm_file_name):
                 yield dm_file_name
                 continue
-            assert False, "File not found in tokenized dir!"
+            assert False, "File not found in tokenized dir: " + file_name
 
 
 def get_lines(file_name):
@@ -75,48 +76,59 @@ def get_article_and_abstract(story_file):
     return article, abstract
 
 
+@DatasetReader.register("cnn_dailymail")
 class CNNDailyMailReader(DatasetReader):
     def __init__(self,
-                 cnn_tokenized_dir: str,
-                 dm_tokenized_dir: str,
+                 cnn_tokenized_dir: str = None,
+                 dm_tokenized_dir: str = None,
                  tokenizer: Tokenizer = None,
-                 token_indexers: Dict[str, TokenIndexer] = None,
-                 lazy: bool = False) -> None:
+                 article_token_indexers: Dict[str, TokenIndexer] = None,
+                 abstract_token_indexers: Dict[str, TokenIndexer] = None,
+                 lazy: bool = False,
+                 article_max_tokens: int = 400,
+                 abstract_max_tokens: int = 100) -> None:
         super().__init__(lazy)
 
-        self.cnn_tokenized_dir = cnn_tokenized_dir
-        self.dm_tokenized_dir = dm_tokenized_dir
+        self._cnn_tokenized_dir = cnn_tokenized_dir
+        self._dm_tokenized_dir = dm_tokenized_dir
+
+        self._article_max_tokens = article_max_tokens
+        self._abstract_max_tokens = abstract_max_tokens
+
         self._tokenizer = tokenizer or WordTokenizer()
-        self._token_indexers = token_indexers or {"tokens": SingleIdTokenIndexer()}
+        self._article_token_indexers = \
+            article_token_indexers or {"tokens": SingleIdTokenIndexer()}
+        self._abstract_token_indexers = \
+            abstract_token_indexers or {"tokens": SingleIdTokenIndexer(namespace="abstract_tokens")}
 
     def _read(self, urls_file_path: str) -> Iterable[Instance]:
-        for article, abstract in self._parse_files(urls_file_path):
-            tokenized_article = self._tokenizer.tokenize(article)
-            tokenized_article.insert(0, Token(START_SYMBOL))
-            tokenized_article.append(Token(END_SYMBOL))
+        for article, abstract in self.parse_files(urls_file_path):
+            if not article.strip() or not abstract.strip():
+                continue
+            instance = self.text_to_instance(article, abstract)
+            yield instance
 
-            tokenized_abstract = self._tokenizer.tokenize(abstract)
+    def text_to_instance(self, article: str, abstract: str = None) -> Instance:
+        tokenized_article = self._tokenizer.tokenize(article)[:self._article_max_tokens]
+        tokenized_article.insert(0, Token(START_SYMBOL))
+        tokenized_article.append(Token(END_SYMBOL))
+        article_field = TextField(tokenized_article, self._article_token_indexers)
+
+        if abstract is not None:
+            tokenized_abstract = self._tokenizer.tokenize(abstract)[:self._abstract_max_tokens]
             tokenized_abstract.insert(0, Token(START_SYMBOL))
             tokenized_abstract.append(Token(END_SYMBOL))
-
-            article_field = TextField(tokenized_article[:1200], self._token_indexers)
-            abstract_field = TextField(tokenized_abstract[:500], self._token_indexers)
-
-            yield Instance({
+            abstract_field = TextField(tokenized_abstract, self._abstract_token_indexers)
+            return Instance({
                 'source_tokens': article_field,
                 'target_tokens': abstract_field
             })
+        else:
+            return Instance({
+                'source_tokens': article_field,
+            })
 
-    def text_to_instance(self, article) -> Instance:
-        tokenized_article = self._tokenizer.tokenize(article)
-        tokenized_article.insert(0, Token(START_SYMBOL))
-        tokenized_article.append(Token(END_SYMBOL))
-        article_field = TextField(tokenized_article, self._token_indexers)
-        yield Instance({
-            'source_tokens': article_field,
-        })
-
-    def _parse_files(self, urls_path):
-        file_names = get_file_names_by_urls(self.cnn_tokenized_dir, self.dm_tokenized_dir, urls_path)
+    def parse_files(self, urls_path):
+        file_names = get_file_names_by_urls(self._cnn_tokenized_dir, self._dm_tokenized_dir, urls_path)
         for file_name in file_names:
             yield get_article_and_abstract(file_name)

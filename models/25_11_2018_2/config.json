@@ -10,29 +10,33 @@
       }
     },
     "encoder": {
-      "type": "multi_head_self_attention",
-      "num_heads": 5,
-      "input_dim": 100,
-      "attention_dim": 100,
-      "values_dim": 100
+      "type": "lstm",
+      "num_layers": 2,
+      "input_size": 100,
+      "hidden_size": 100,
+      "bidirectional": true
     },
-    "max_decoding_steps": 100,
     "attention": {
       "type": "bilinear",
-      "vector_dim": 100,
-      "matrix_dim": 100
+      "vector_dim": 200,
+      "matrix_dim": 200,
+      "activation": "tanh"
     },
+    "max_decoding_steps": 100,
     "beam_size": 5
   },
   "iterator": {
     "type": "bucket",
     "sorting_keys": [["source_tokens", "num_tokens"]],
-    "batch_size": 8
+    "batch_size": 20,
+    "cache_instances": true
   },
   "trainer": {
-    "num_epochs": 40,
+    "num_epochs": 50,
     "grad_norm": 5.0,
     "cuda_device": 0,
+    "summary_interval": 1,
+    "patience": 2,
     "shuffle": false,
     "should_log_parameter_statistics": false,
     "optimizer": {
