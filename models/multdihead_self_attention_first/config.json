@@ -1,0 +1,46 @@
+{
+  "model": {
+    "type": "simple_seq2seq",
+    "target_namespace": "abstract_tokens",
+    "source_embedder": {
+      "type": "basic",
+      "token_embedders": {
+        "tokens": {
+          "type": "embedding",
+          "embedding_dim": 100
+        }
+      }
+    },
+    "encoder": {
+      "type": "multi_head_self_attention",
+      "num_heads": 10,
+      "input_dim": 100,
+      "attention_dim": 100,
+      "values_dim": 100
+    },
+    "max_decoding_steps": 100,
+    "beam_size": 5
+  },
+  "iterator": {
+    "type": "bucket",
+    "sorting_keys": [["source_tokens", "num_tokens"]],
+    "batch_size": 16,
+    "cache_instances": true
+  },
+  "trainer": {
+    "num_epochs": 20,
+    "grad_norm": 5.0,
+    "cuda_device": 0,
+    "summary_interval": 1,
+    "patience": 2,
+    "shuffle": false,
+    "should_log_parameter_statistics": false,
+    "optimizer": {
+      "type": "adam",
+      "lr": 0.001
+    }
+  },
+  "predictor": {
+    "type": "simple_seq2seq"
+  }
+}

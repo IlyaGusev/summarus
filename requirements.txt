@@ -1,5 +1,4 @@
 numpy >= 1.12.1
 torch == 0.4.1
 allennlp == 0.7.1
-pyrouge == 0.1.3
-py-rouge
+rouge == 0.3.1

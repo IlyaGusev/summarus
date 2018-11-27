@@ -1,5 +1,7 @@
 {
   "model": {
+    "type": "simple_seq2seq",
+    "target_namespace": "abstract_tokens",
     "source_embedder": {
       "type": "basic",
       "token_embedders": {

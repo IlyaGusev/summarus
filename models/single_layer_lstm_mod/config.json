@@ -1,24 +1,32 @@
 {
   "model": {
-    "type": "simple_seq2seq",
+    "type": "seq2seq",
+    "target_namespace": "article_tokens",
+    "tie_embeddings": true,
     "source_embedder": {
       "type": "basic",
       "token_embedders": {
         "tokens": {
           "type": "embedding",
-          "embedding_dim": 100
+          "embedding_dim": 128
         }
       }
     },
     "encoder": {
-      "type": "multi_head_self_attention",
-      "num_heads": 10,
-      "input_dim": 100,
-      "attention_dim": 100,
-      "values_dim": 100
+      "type": "lstm",
+      "num_layers": 1,
+      "input_size": 128,
+      "hidden_size": 128,
+      "bidirectional": true
+    },
+    "attention": {
+      "type": "linear",
+      "tensor_1_dim": 256,
+      "tensor_2_dim": 256,
+      "activation": "tanh"
     },
     "max_decoding_steps": 100,
-    "beam_size": 5
+    "beam_size": 4
   },
   "iterator": {
     "type": "bucket",
@@ -27,8 +35,8 @@
     "cache_instances": true
   },
   "trainer": {
-    "num_epochs": 20,
-    "grad_norm": 5.0,
+    "num_epochs": 33,
+    "grad_norm": 2.0,
     "cuda_device": 0,
     "summary_interval": 1,
     "patience": 2,
@@ -38,8 +46,5 @@
       "type": "adam",
       "lr": 0.001
     }
-  },
-  "predictor": {
-    "type": "simple_seq2seq"
   }
 }
