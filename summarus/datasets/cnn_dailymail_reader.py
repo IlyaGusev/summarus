@@ -1,7 +1,6 @@
 import hashlib
 import os
-from typing import Iterable, Dict
-import pickle
+from typing import Iterable, Dict, List, Tuple
 
 from allennlp.data.instance import Instance
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
@@ -56,10 +55,10 @@ def get_lines(file_name):
             yield fix_missing_period(line.strip().lower())
 
 
-def get_article_and_abstract(story_file):
+def get_article_and_abstract(story_file) -> Tuple[str, List]:
     lines = get_lines(story_file)
     article_lines = []
-    highlights = []
+    abstract = []
     next_is_highlight = False
     for line in lines:
         if not line:
@@ -67,12 +66,11 @@ def get_article_and_abstract(story_file):
         elif line.startswith("@highlight"):
             next_is_highlight = True
         elif next_is_highlight:
-            highlights.append(line)
+            abstract.append(line)
         else:
             article_lines.append(line)
 
     article = ' '.join(article_lines)
-    abstract = ' '.join(highlights)
     return article, abstract
 
 
@@ -84,9 +82,10 @@ class CNNDailyMailReader(DatasetReader):
                  tokenizer: Tokenizer = None,
                  article_token_indexers: Dict[str, TokenIndexer] = None,
                  abstract_token_indexers: Dict[str, TokenIndexer] = None,
-                 lazy: bool = False,
+                 lazy: bool = True,
                  article_max_tokens: int = 400,
-                 abstract_max_tokens: int = 100) -> None:
+                 abstract_max_tokens: int = 100,
+                 separate_namespaces: bool = False) -> None:
         super().__init__(lazy)
 
         self._cnn_tokenized_dir = cnn_tokenized_dir
@@ -96,25 +95,29 @@ class CNNDailyMailReader(DatasetReader):
         self._abstract_max_tokens = abstract_max_tokens
 
         self._tokenizer = tokenizer or WordTokenizer()
-        self._article_token_indexers = \
-            article_token_indexers or {"tokens": SingleIdTokenIndexer()}
-        self._abstract_token_indexers = \
-            abstract_token_indexers or {"tokens": SingleIdTokenIndexer(namespace="abstract_tokens")}
+
+        tokens_indexer = {"tokens": SingleIdTokenIndexer()}
+        self._article_token_indexers = article_token_indexers or tokens_indexer
+        self._abstract_token_indexers = abstract_token_indexers or tokens_indexer
+        if separate_namespaces:
+            self._abstract_token_indexers = abstract_token_indexers or \
+                                            {"tokens": SingleIdTokenIndexer(namespace="abstract_tokens")}
 
     def _read(self, urls_file_path: str) -> Iterable[Instance]:
         for article, abstract in self.parse_files(urls_file_path):
-            if not article.strip() or not abstract.strip():
+            if not article.strip() or not ''.join(abstract):
                 continue
             instance = self.text_to_instance(article, abstract)
             yield instance
 
-    def text_to_instance(self, article: str, abstract: str = None) -> Instance:
+    def text_to_instance(self, article: str, abstract: List = None) -> Instance:
         tokenized_article = self._tokenizer.tokenize(article)[:self._article_max_tokens]
         tokenized_article.insert(0, Token(START_SYMBOL))
         tokenized_article.append(Token(END_SYMBOL))
         article_field = TextField(tokenized_article, self._article_token_indexers)
 
-        if abstract is not None:
+        if abstract:
+            abstract = " ".join(abstract)
             tokenized_abstract = self._tokenizer.tokenize(abstract)[:self._abstract_max_tokens]
             tokenized_abstract.insert(0, Token(START_SYMBOL))
             tokenized_abstract.append(Token(END_SYMBOL))

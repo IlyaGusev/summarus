@@ -5,7 +5,7 @@ from overrides import overrides
 import torch
 import torch.nn.functional as F
 from torch.nn.modules.linear import Linear
-from torch.nn.modules.rnn import LSTMCell
+from torch.nn.modules.rnn import LSTMCell, LSTM
 
 from allennlp.common.checks import ConfigurationError
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
@@ -25,7 +25,7 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(seed)
 
 
-def init_lstm_weights(lstm, rand_unif_init_mag):
+def init_lstm_weights(lstm, rand_unif_init_mag=0.02):
     for names in lstm._all_weights:
         for name in names:
             if name.startswith('weight_'):
@@ -40,18 +40,68 @@ def init_lstm_weights(lstm, rand_unif_init_mag):
                 bias.data[start:end].fill_(1.)
 
 
-def init_linear_wt(linear, trunc_norm_init_std):
+def init_linear_wt(linear, trunc_norm_init_std=1e-4):
     linear.weight.data.normal_(std=trunc_norm_init_std)
     if linear.bias is not None:
         linear.bias.data.normal_(std=trunc_norm_init_std)
 
 
-def init_wt_normal(wt, trunc_norm_init_std):
+def init_wt_normal(wt, trunc_norm_init_std=1e-4):
     wt.data.normal_(std=trunc_norm_init_std)
 
 
-def init_wt_unif(wt, rand_unif_init_mag):
+def init_wt_unif(wt, rand_unif_init_mag=0.02):
     wt.data.uniform_(-rand_unif_init_mag, rand_unif_init_mag)
+
+
+class LSTMEncoder(Seq2SeqEncoder):
+    def __init__(self,
+                 embedding_dim):
+        super(Seq2SeqEncoder, self).__init__()
+
+        self.lstm = LSTM(config.emb_dim, config.hidden_dim, num_layers=1, batch_first=True, bidirectional=True)
+        init_lstm_wt(self.lstm)
+
+        self.W_h = nn.Linear(config.hidden_dim * 2, config.hidden_dim * 2, bias=False)
+
+
+        self.lstm = nn.LSTM(config.emb_dim, config.hidden_dim, num_layers=1, batch_first=True, bidirectional=True)
+        init_lstm_wt(self.lstm)
+
+        self.W_h = nn.Linear(config.hidden_dim * 2, config.hidden_dim * 2, bias=False)
+
+    def get_input_dim(self) -> int:
+        pass
+
+    def get_output_dim(self) -> int:
+        pass
+
+    def is_bidirectional(self) -> bool:
+        pass
+class LSTMEncoder(Seq2SeqEncoder):
+    def __init__(self,
+                 embedding_dim):
+        super(Seq2SeqEncoder, self).__init__()
+
+        self.lstm = LSTM(config.emb_dim, config.hidden_dim, num_layers=1, batch_first=True, bidirectional=True)
+        init_lstm_wt(self.lstm)
+
+        self.W_h = nn.Linear(config.hidden_dim * 2, config.hidden_dim * 2, bias=False)
+
+
+        self.lstm = nn.LSTM(config.emb_dim, config.hidden_dim, num_layers=1, batch_first=True, bidirectional=True)
+        init_lstm_wt(self.lstm)
+
+        self.W_h = nn.Linear(config.hidden_dim * 2, config.hidden_dim * 2, bias=False)
+
+    def get_input_dim(self) -> int:
+        pass
+
+    def get_output_dim(self) -> int:
+        pass
+
+    def is_bidirectional(self) -> bool:
+        pass
 
 
 @Model.register("seq2seq")
@@ -62,45 +112,28 @@ class Seq2Seq(Model):
                  encoder: Seq2SeqEncoder,
                  max_decoding_steps: int,
                  attention: Attention = None,
-                 attention_function: SimilarityFunction = None,
                  beam_size: int = None,
                  target_namespace: str = "tokens",
                  target_embedding_dim: int = None,
-                 scheduled_sampling_ratio: float = 0.,
                  projection_dim: int = None,
-                 tie_embeddings: bool = False) -> None:
+                 decoder_input_projection_dim: int = None,
+                 tie_embeddings: bool = False,
+                 custom_init: bool = False) -> None:
         super(Seq2Seq, self).__init__(vocab)
         self._target_namespace = target_namespace
-        self._scheduled_sampling_ratio = scheduled_sampling_ratio
         self._tie_embeddings = tie_embeddings
+        self._custom_init = custom_init
 
-        # We need the start symbol to provide as the input at the first timestep of decoding, and
-        # end symbol as a way to indicate the end of the decoded sequence.
         self._start_index = self.vocab.get_token_index(START_SYMBOL, self._target_namespace)
         self._end_index = self.vocab.get_token_index(END_SYMBOL, self._target_namespace)
 
-        # Dense embedding of source vocab tokens.
         self._source_embedder = source_embedder
-
         self._projection_dim = projection_dim or self._source_embedder.get_output_dim()
-
-        # Encodes the sequence of source embeddings into a sequence of hidden states.
         self._encoder = encoder
 
+        self._attention = attention
+
         num_classes = self.vocab.get_vocab_size(self._target_namespace)
-
-        # Attention mechanism applied to the encoder output for each step.
-        if attention:
-            if attention_function:
-                raise ConfigurationError("You can only specify an attention module or an "
-                                         "attention function, but not both.")
-            self._attention = attention
-        elif attention_function:
-            self._attention = LegacyAttention(attention_function)
-        else:
-            self._attention = None
-
-        # Dense embedding of vocab words in the target space.
         target_embedding_dim = target_embedding_dim or source_embedder.get_output_dim()
         self._target_embedder = Embedding(num_classes, target_embedding_dim)
 
@@ -118,6 +151,12 @@ class Seq2Seq(Model):
             # Otherwise, the input to the decoder is just the previous target embedding.
             self._decoder_input_dim = target_embedding_dim
 
+        self._decoder_input_projection_dim = decoder_input_projection_dim
+
+        if self._decoder_input_projection_dim:
+            self._decoder_input_projection_layer = Linear(self._decoder_input_dim, self._decoder_input_projection_dim)
+            self._decoder_input_dim = self._decoder_input_projection_dim
+
         # We'll use an LSTM cell as the recurrent cell that produces a hidden state
         # for the decoder at each time step.
         self._decoder_cell = LSTMCell(self._decoder_input_dim, self._decoder_output_dim)
@@ -128,11 +167,20 @@ class Seq2Seq(Model):
         # in order to get log probabilities of each target token, at each time step.
         self._output_projection_layer = Linear(self._projection_dim, num_classes)
 
+        if self._custom_init:
+            encoder_module = dict(self._encoder.named_children())["_module"]
+            assert isinstance(encoder_module, LSTM)
+            init_lstm_weights(encoder_module)
+
+            assert "token_embedder_tokens" in dict(self._source_embedder.named_children())
+            token_embedder = dict(self._source_embedder.named_children())["token_embedder_tokens"]
+            init_wt_normal(token_embedder.weight)
+            init_wt_normal(self._target_embedder.weight)
+
         if self._tie_embeddings:
-            assert "token_embedder_tokens" in self._source_embedder.named_children()
-            token_embedder = self._source_embedder.named_children()["token_embedder_tokens"]
-            assert self._projection_dim == token_embedder.get_output_dim()
-            self._output_projection_layer.weight = token_embedder.weight
+            assert "token_embedder_tokens" in dict(self._source_embedder.named_children())
+            source_token_embedder = dict(self._source_embedder.named_children())["token_embedder_tokens"]
+            self._target_embedder.weight = source_token_embedder.weight
 
         # At prediction time, we can use a beam search to find the most likely sequence of target tokens.
         # If the beam_size parameter is not given, we'll just use a greedy search (equivalent to beam_size = 1).
@@ -363,6 +411,8 @@ class Seq2Seq(Model):
         else:
             # shape: (group_size, target_embedding_dim)
             decoder_input = embedded_input
+
+        decoder_input = self._decoder_input_projection_layer(decoder_input)
 
         # shape (decoder_hidden): (batch_size, decoder_output_dim)
         # shape (decoder_context): (batch_size, decoder_output_dim)

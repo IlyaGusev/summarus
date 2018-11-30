@@ -1,8 +1,12 @@
 {
   "model": {
     "type": "seq2seq",
-    "target_namespace": "article_tokens",
-    "tie_embeddings": true,
+    "target_namespace": "tokens",
+    "tie_embeddings": false,
+    "custom_init": false,
+    "projection_dim": 256,
+    "decoder_input_projection_dim": 128,
+    "tie_embeddings"
     "source_embedder": {
       "type": "basic",
       "token_embedders": {
@@ -16,13 +20,13 @@
       "type": "lstm",
       "num_layers": 1,
       "input_size": 128,
-      "hidden_size": 128,
+      "hidden_size": 256,
       "bidirectional": true
     },
     "attention": {
       "type": "linear",
-      "tensor_1_dim": 256,
-      "tensor_2_dim": 256,
+      "tensor_1_dim": 512,
+      "tensor_2_dim": 512,
       "activation": "tanh"
     },
     "max_decoding_steps": 100,
@@ -46,5 +50,8 @@
       "type": "adam",
       "lr": 0.001
     }
+  },
+  "reader": {
+    "separate_namespaces": true
   }
 }
