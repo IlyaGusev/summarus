@@ -147,4 +147,4 @@ def evaluate(model_name):
     rouge_log(scores)
 
 
-evaluate("single_layer_lstm_external_vocab")
+train("external")

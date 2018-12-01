@@ -6,17 +6,18 @@ import torch
 import torch.nn.functional as F
 from torch.nn.modules.linear import Linear
 from torch.nn.modules.rnn import LSTMCell, LSTM
+from torch.autograd import Variable
 
-from allennlp.common.checks import ConfigurationError
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.data.vocabulary import Vocabulary
-from allennlp.modules.attention import LegacyAttention
 from allennlp.modules import Attention, TextFieldEmbedder, Seq2SeqEncoder
-from allennlp.modules.similarity_functions import SimilarityFunction
 from allennlp.models.model import Model
 from allennlp.modules.token_embedders import Embedding
 from allennlp.nn import util
 from allennlp.nn.beam_search import BeamSearch
+from allennlp.nn.util import get_lengths_from_binary_sequence_mask
+from torch.nn.utils.rnn import pack_padded_sequence as pack
+from torch.nn.utils.rnn import pad_packed_sequence as unpack
 
 seed = 1048596
 numpy.random.seed(seed)
@@ -26,18 +27,15 @@ if torch.cuda.is_available():
 
 
 def init_lstm_weights(lstm, rand_unif_init_mag=0.02):
-    for names in lstm._all_weights:
-        for name in names:
-            if name.startswith('weight_'):
-                wt = getattr(lstm, name)
-                wt.data.uniform_(rand_unif_init_mag, rand_unif_init_mag)
-            elif name.startswith('bias_'):
-                # set forget bias to 1
-                bias = getattr(lstm, name)
-                n = bias.size(0)
-                start, end = n // 4, n // 2
-                bias.data.fill_(0.)
-                bias.data[start:end].fill_(1.)
+    for name, p in lstm.named_parameters():
+        if name.startswith('weight_'):
+            p.data.uniform_(rand_unif_init_mag, rand_unif_init_mag)
+        elif name.startswith('bias_'):
+            # set forget bias to 1
+            n = p.size(0)
+            start, end = n // 4, n // 2
+            p.data.fill_(0.)
+            p.data[start:end].fill_(1.)
 
 
 def init_linear_wt(linear, trunc_norm_init_std=1e-4):
@@ -54,7 +52,7 @@ def init_wt_unif(wt, rand_unif_init_mag=0.02):
     wt.data.uniform_(-rand_unif_init_mag, rand_unif_init_mag)
 
 
-@Seq2SeqEncode.register("lstm_custom")
+@Seq2SeqEncoder.register("lstm_custom")
 class LSTMEncoder(Seq2SeqEncoder):
     def __init__(self,
                  input_size: int,
@@ -74,11 +72,13 @@ class LSTMEncoder(Seq2SeqEncoder):
         self._feature_projection_layer = Linear(hidden_size * 2, hidden_size * 2, bias=False)
 
     def forward(self, inputs, mask):
-        lengths = get_lengths_from_binary_sequence_mask(mask)
+        # lengths = get_lengths_from_binary_sequence_mask(mask)
 
-        packed = pack_padded_sequence(inputs, lengths, batch_first=True)
-        outputs, hidden = self._lstm_layer(packed, None)
-        outputs, _ = unpack(outputs, batch_first=True)
+        # packed = pack(inputs, lengths, batch_first=True)
+        outputs, hidden = self._lstm_layer(inputs, None)
+        # outputs, _ = unpack(outputs, batch_first=True)
+
+        outputs = outputs.contiguous()
 
         feature = outputs.view(-1, self._hidden_size * 2)
         feature = self._feature_projection_layer(feature)
@@ -98,7 +98,7 @@ class LSTMEncoder(Seq2SeqEncoder):
 class CustomAttention(torch.nn.Module):
     def __init__(self,
                  hidden_size: int):
-        super(Attention, self).__init__()
+        super(CustomAttention, self).__init__()
 
         self._hidden_size = hidden_size
 
@@ -110,20 +110,21 @@ class CustomAttention(torch.nn.Module):
 
         decoder_feature = self.decoder_hidden_projection_layer(decoder_state)
         decoder_feature = decoder_feature.unsqueeze(1).expand(batch_size, l, n).contiguous()
-        decoder_feature = decoder_feature.view(-1, n) # B * l x 2*hidden_dim
+        decoder_feature = decoder_feature.view(-1, n)  # B * l x 2*hidden_dim
 
         features = encoder_feature + decoder_feature
         scores = self.v(F.tanh(features))
         scores = scores.view(-1, l)
+
         scores = F.softmax(scores, dim=1) * mask
         normalization_factor = scores.sum(1, keepdim=True)
         scores = scores / normalization_factor
         scores = scores.unsqueeze(1)  # B x 1 x l
 
-        context = torch.bmm(scores, outputs)
+        context = torch.bmm(scores, encoder_outputs)
         context = context.view(-1, self._hidden_size * 2)
 
-        scores = scores.view(-1, t_k)  # B x l
+        scores = scores.view(-1, l)  # B x l
 
         return context, scores
 
@@ -135,12 +136,10 @@ class Seq2Seq(Model):
                  source_embedder: TextFieldEmbedder,
                  encoder: Seq2SeqEncoder,
                  max_decoding_steps: int,
-                 attention: Attention = None,
                  beam_size: int = None,
                  target_namespace: str = "tokens",
                  target_embedding_dim: int = None,
                  projection_dim: int = None,
-                 decoder_input_projection_dim: int = None,
                  tie_embeddings: bool = False,
                  custom_init: bool = False) -> None:
         super(Seq2Seq, self).__init__(vocab)
@@ -160,6 +159,10 @@ class Seq2Seq(Model):
         # Encoder
         self._encoder = encoder
         self._encoder_output_dim = self._encoder.get_output_dim()
+        self.reduce_h = Linear(self._encoder.get_output_dim(), self._encoder.get_output_dim() // 2)
+        init_linear_wt(self.reduce_h)
+        self.reduce_c = Linear(self._encoder.get_output_dim(), self._encoder.get_output_dim() // 2)
+        init_linear_wt(self.reduce_c)
 
         # Target embedder
         num_classes = self.vocab.get_vocab_size(self._target_namespace)
@@ -171,18 +174,19 @@ class Seq2Seq(Model):
             source_token_embedder = dict(self._source_embedder.named_children())["token_embedder_tokens"]
             self._target_embedder.weight = source_token_embedder.weight
 
-
         # Decoder
         self._decoder_input_dim = target_embedding_dim
-        self._decoder_output_dim = self._encoder_output_dim
+        self._decoder_output_dim = self._encoder_output_dim // 2
+        self._decoder_input_projection = Linear(self._decoder_output_dim * 2 + target_embedding_dim, self._decoder_input_dim)
         self._decoder_cell = LSTMCell(self._decoder_input_dim, self._decoder_output_dim)
+        init_lstm_weights(self._decoder_cell)
 
         # Attention
-        self._attention = CustomAttention(self._encoder_output_dim / 2)
+        self._attention = CustomAttention(self._encoder_output_dim // 2)
 
         # Prediction
         self._projection_dim = projection_dim or self._source_embedder.get_output_dim()
-        self._hidden_projection_layer = Linear(self._decoder_output_dim, self._projection_dim)
+        self._hidden_projection_layer = Linear(self._decoder_output_dim * 3, self._projection_dim)
         self._output_projection_layer = Linear(self._projection_dim, num_classes) 
 
         # Misc
@@ -242,15 +246,18 @@ class Seq2Seq(Model):
         # shape: (batch_size, max_input_sequence_length, encoder_output_dim)
         encoder_outputs, encoder_feature, encoder_hidden = self._encoder(embedded_input, source_mask)
 
-        # shape: (batch_size, decoder_output_dim)
-        decoder_context = encoder_outputs.new_zeros(batch_size, self._decoder_output_dim)
+        decoder_hidden = encoder_hidden[0].contiguous().view(-1, self._encoder_output_dim)
+        decoder_hidden = F.relu(self.reduce_h(decoder_hidden))
+
+        decoder_context = encoder_hidden[1].contiguous().view(-1, self._encoder_output_dim)
+        decoder_context = F.relu(self.reduce_c(decoder_context))
 
         state = {
-                "source_mask": source_mask,
+                "source_mask": source_mask.float(),
                 "encoder_outputs": encoder_outputs,
                 "encoder_feature": encoder_feature,
-                "decoder_hidden": encoder_hidden[0],
-                "decoder_context": encoder_hidden[1]
+                "decoder_hidden": decoder_hidden,
+                "decoder_context": decoder_context
         }
 
         return state
@@ -356,6 +363,7 @@ class Seq2Seq(Model):
         encoder_outputs = state["encoder_outputs"]
         # shape: (group_size, max_input_sequence_length)
         source_mask = state["source_mask"]
+        batch_size = source_mask.size()[0]
         # shape: (group_size, decoder_output_dim)
         decoder_hidden = state["decoder_hidden"]
         # shape: (group_size, decoder_output_dim)
@@ -365,42 +373,29 @@ class Seq2Seq(Model):
         # shape: (group_size, target_embedding_dim)
         embedded_input = self._target_embedder(last_predictions)
 
-        decoder_state = 
-        # shape: (group_size, decoder_output_dim + target_embedding_dim)
-        #decoder_input = torch.cat((attended_input, embedded_input), -1)
+        if "attn_context" in state:
+            context = state["attn_context"]
+        else:
+            context = Variable(torch.zeros((batch_size, self._decoder_output_dim * 2)))
 
-        #decoder_input = self._decoder_input_projection_layer(decoder_input)
+        decoder_input = self._decoder_input_projection(torch.cat((context, embedded_input), 1))
 
         # shape (decoder_hidden): (batch_size, decoder_output_dim)
         # shape (decoder_context): (batch_size, decoder_output_dim)
-        decoder_hidden, decoder_context = self._decoder_cell(
-            decoder_input, (decoder_hidden, decoder_context))
+        decoder_hidden, decoder_context = self._decoder_cell(decoder_input, (decoder_hidden, decoder_context))
+
+        decoder_state = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim),
+                                   decoder_context.view(-1, self._decoder_output_dim)), 1)
+
+        context, attn_scores = self._attention(decoder_state, encoder_outputs, encoder_feature, source_mask)
+        output = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim), context), 1)  # B x hidden_dim * 3
+        output_projections = self._output_projection_layer(self._hidden_projection_layer(output))
 
         state["decoder_hidden"] = decoder_hidden
         state["decoder_context"] = decoder_context
-
-
-
-        # shape: (group_size, num_classes)
-        output_projections = self._output_projection_layer(self._hidden_projection_layer(decoder_hidden))
+        state["attn_context"] = context
 
         return output_projections, state
-
-    def _prepare_attended_input(self,
-                                decoder_hidden_state: torch.LongTensor = None,
-                                encoder_outputs: torch.LongTensor = None,
-                                encoder_feature: torch.LongTensor = None,
-                                encoder_outputs_mask: torch.LongTensor = None) -> torch.Tensor:
-        encoder_outputs_mask = encoder_outputs_mask.float()
-
-        # shape: (batch_size, max_input_sequence_length)
-        input_weights = self._attention(decoder_hidden_state, encoder_outputs,
-            encoder_feature, encoder_outputs_mask)
-
-        # shape: (batch_size, encoder_output_dim)
-        attended_input = util.weighted_sum(encoder_outputs, input_weights)
-
-        return attended_input
 
     @staticmethod
     def _get_loss(logits: torch.LongTensor,
