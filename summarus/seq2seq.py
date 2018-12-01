@@ -376,7 +376,7 @@ class Seq2Seq(Model):
         if "attn_context" in state:
             context = state["attn_context"]
         else:
-            context = Variable(torch.zeros((batch_size, self._decoder_output_dim * 2)))
+            context = decoder_context.new_zeros(batch_size, self._decoder_output_dim * 2)
 
         decoder_input = self._decoder_input_projection(torch.cat((context, embedded_input), 1))
 
