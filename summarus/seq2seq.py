@@ -109,7 +109,7 @@ class CustomAttention(torch.nn.Module):
         decoder_feature = self.decoder_hidden_projection_layer(decoder_state)
         decoder_feature = decoder_feature.unsqueeze(1).expand(batch_size, l, n).contiguous()
         decoder_feature = decoder_feature.view(-1, n)  # B * l x 2*hidden_dim
-        encoder_feature = encoder_feature.view(-1, n)
+        encoder_feature = encoder_feature.contiguous().view(-1, n)
 
         features = encoder_feature + decoder_feature
         scores = self.v(F.tanh(features))
