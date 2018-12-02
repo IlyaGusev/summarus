@@ -79,9 +79,7 @@ class LSTMEncoder(Seq2SeqEncoder):
         # outputs, _ = unpack(outputs, batch_first=True)
 
         outputs = outputs.contiguous()
-
-        feature = outputs.view(-1, self._hidden_size * 2)
-        feature = self._feature_projection_layer(feature)
+        feature = self._feature_projection_layer(outputs)
 
         return outputs, feature, hidden
 
@@ -111,11 +109,13 @@ class CustomAttention(torch.nn.Module):
         decoder_feature = self.decoder_hidden_projection_layer(decoder_state)
         decoder_feature = decoder_feature.unsqueeze(1).expand(batch_size, l, n).contiguous()
         decoder_feature = decoder_feature.view(-1, n)  # B * l x 2*hidden_dim
+        encoder_feature = encoder_feature.view(-1, n)
 
         features = encoder_feature + decoder_feature
         scores = self.v(F.tanh(features))
         scores = scores.view(-1, l)
 
+        mask = mask.float()
         scores = F.softmax(scores, dim=1) * mask
         normalization_factor = scores.sum(1, keepdim=True)
         scores = scores / normalization_factor
@@ -253,7 +253,7 @@ class Seq2Seq(Model):
         decoder_context = F.relu(self.reduce_c(decoder_context))
 
         state = {
-                "source_mask": source_mask.float(),
+                "source_mask": source_mask,
                 "encoder_outputs": encoder_outputs,
                 "encoder_feature": encoder_feature,
                 "decoder_hidden": decoder_hidden,
@@ -342,7 +342,7 @@ class Seq2Seq(Model):
         return output_dict
 
     def _forward_beam_search(self, state: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        batch_size = state["source_mask"].size()[0]
+        batch_size = state["source_mask"].size(0)
         start_predictions = state["source_mask"].new_full((batch_size,), fill_value=self._start_index)
 
         # shape (all_top_k_predictions): (batch_size, beam_size, num_decoding_steps)

@@ -102,6 +102,9 @@ def evaluate(model_name):
     ref_dir = os.path.join(eval_dir, "ref")
     hyp_dir = os.path.join(eval_dir, "hyp")
     src_dir = os.path.join(eval_dir, "src")
+    for d in (eval_dir, ref_dir, hyp_dir, src_dir):
+        if not os.path.isdir(d):
+            os.mkdir(d)
 
     count = 0
     predictor = SimpleSeq2SeqPredictor(model, reader)
@@ -119,9 +122,10 @@ def evaluate(model_name):
         decoded_sents = [make_html_safe(w) for w in decoded_sents]
         reference_sents = [make_html_safe(w) for w in reference_sents]
 
-        print("Article: ", article)
-        print("Abstract: ", reference_sents)
-        print("Pred abstract: ", decoded_sents)
+        if count % 100 == 0:
+            print("Article: ", article)
+            print("Abstract: ", reference_sents)
+            print("Pred abstract: ", decoded_sents)
 
         ref_path = os.path.join(ref_dir, str(count) + "_reference.txt")
         hyp_path = os.path.join(hyp_dir, str(count) + "_decoded.txt")
