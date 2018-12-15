@@ -52,47 +52,6 @@ def init_wt_unif(wt, rand_unif_init_mag=0.02):
     wt.data.uniform_(-rand_unif_init_mag, rand_unif_init_mag)
 
 
-@Seq2SeqEncoder.register("lstm_custom")
-class LSTMEncoder(Seq2SeqEncoder):
-    def __init__(self,
-                 input_size: int,
-                 hidden_size: int,
-                 num_layers: int,
-                 bidirectional: bool = True):
-        super(Seq2SeqEncoder, self).__init__()
-
-        self._input_size = input_size
-        self._hidden_size = hidden_size
-        self._bidirectional = bidirectional
-        self._output_size = hidden_size * 2 if bidirectional else hidden_size
-
-        self._lstm_layer = LSTM(input_size, hidden_size, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
-        init_lstm_weights(self._lstm_layer)
-
-        self._feature_projection_layer = Linear(hidden_size * 2, hidden_size * 2, bias=False)
-
-    def forward(self, inputs, mask):
-        # lengths = get_lengths_from_binary_sequence_mask(mask)
-
-        # packed = pack(inputs, lengths, batch_first=True)
-        outputs, hidden = self._lstm_layer(inputs, None)
-        # outputs, _ = unpack(outputs, batch_first=True)
-
-        outputs = outputs.contiguous()
-        feature = self._feature_projection_layer(outputs)
-
-        return outputs, feature, hidden
-
-    def get_input_dim(self) -> int:
-        return self._input_size
-
-    def get_output_dim(self) -> int:
-        return self._output_size
-
-    def is_bidirectional(self) -> bool:
-        return self._bidirectional
-
-
 class CustomAttention(torch.nn.Module):
     def __init__(self,
                  hidden_size: int):
@@ -163,6 +122,8 @@ class Seq2Seq(Model):
         init_linear_wt(self.reduce_h)
         self.reduce_c = Linear(self._encoder.get_output_dim(), self._encoder.get_output_dim() // 2)
         init_linear_wt(self.reduce_c)
+        self._feature_projection_layer = Linear(self._encoder.get_output_dim(),
+            self._encoder.get_output_dim(), bias=False)
 
         # Target embedder
         num_classes = self.vocab.get_vocab_size(self._target_namespace)
@@ -244,13 +205,17 @@ class Seq2Seq(Model):
         source_mask = util.get_text_field_mask(source_tokens)
 
         # shape: (batch_size, max_input_sequence_length, encoder_output_dim)
-        encoder_outputs, encoder_feature, encoder_hidden = self._encoder(embedded_input, source_mask)
-
-        decoder_hidden = encoder_hidden[0].contiguous().view(-1, self._encoder_output_dim)
+        encoder_outputs = self._encoder(embedded_input, source_mask)
+        final_encoder_output = util.get_final_encoder_states(
+            encoder_outputs, source_mask, _encoder.is_bidirectional())
+        decoder_hidden = final_encoder_output
         decoder_hidden = F.relu(self.reduce_h(decoder_hidden))
 
-        decoder_context = encoder_hidden[1].contiguous().view(-1, self._encoder_output_dim)
+        decoder_context = encoder_outputs.new_zeros(batch_size, self._decoder_output_dim)
         decoder_context = F.relu(self.reduce_c(decoder_context))
+
+        encoder_outputs = encoder_outputs.contiguous()
+        encoder_feature = self._feature_projection_layer(encoder_outputs)
 
         state = {
                 "source_mask": source_mask,
