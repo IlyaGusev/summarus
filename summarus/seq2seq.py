@@ -15,6 +15,7 @@ from allennlp.models.model import Model
 from allennlp.modules.token_embedders import Embedding
 from allennlp.nn import util
 from allennlp.nn.beam_search import BeamSearch
+from allennlp.models.encoder_decoders.simple_seq2seq import SimpleSeq2Seq
 from allennlp.nn.util import get_lengths_from_binary_sequence_mask
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
@@ -174,12 +175,11 @@ class Seq2Seq(Model):
         # shape: (batch_size, max_input_sequence_length, encoder_output_dim)
         encoder_outputs = self._encoder(embedded_input, source_mask)
         final_encoder_output = util.get_final_encoder_states(
-            encoder_outputs, source_mask, _encoder.is_bidirectional())
+            encoder_outputs, source_mask, self._encoder.is_bidirectional())
         decoder_hidden = final_encoder_output
         decoder_hidden = F.relu(self.reduce_h(decoder_hidden))
 
         decoder_context = encoder_outputs.new_zeros(batch_size, self._decoder_output_dim)
-        decoder_context = F.relu(self.reduce_c(decoder_context))
 
         encoder_outputs = encoder_outputs.contiguous()
         encoder_feature = self._feature_projection_layer(encoder_outputs)
