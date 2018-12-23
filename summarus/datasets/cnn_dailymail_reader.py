@@ -38,15 +38,15 @@ def get_file_names_by_urls(cnn_tokenized_dir, dm_tokenized_dir, urls_file_path):
         for url in r:
             url = url.strip()
             file_name = str(hashhex(url)) + ".story"
-            cnn_file_name = os.path.join(cnn_tokenized_dir, file_name)
-            dm_file_name = os.path.join(dm_tokenized_dir, file_name)
-            if os.path.isfile(cnn_file_name):
-                yield cnn_file_name
-                continue
-            elif os.path.isfile(dm_file_name):
-                yield dm_file_name
-                continue
-            assert False, "File not found in tokenized dir: " + file_name
+            dirs = (cnn_tokenized_dir, dm_tokenized_dir)
+            file_names = [os.path.join(d, file_name) for d in dirs if d is not None]
+            file_found = False
+            for file_name in file_names:
+                if os.path.isfile(file_name):
+                    file_found = True
+                    yield file_name
+                    break
+            assert file_found, "File not found in tokenized dir: " + file_name
 
 
 def get_lines(file_name):

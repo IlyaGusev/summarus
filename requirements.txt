@@ -1,4 +1,4 @@
 numpy >= 1.12.1
-torch == 0.4.1
-allennlp == 0.7.1
+torch == 1.0.0
+allennlp == 0.8.0
 rouge == 0.3.1
