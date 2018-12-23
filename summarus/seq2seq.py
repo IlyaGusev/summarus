@@ -26,32 +26,6 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(seed)
 
 
-def init_lstm_weights(lstm, rand_unif_init_mag=0.02):
-    for name, p in lstm.named_parameters():
-        if name.startswith('weight_'):
-            p.data.uniform_(rand_unif_init_mag, rand_unif_init_mag)
-        elif name.startswith('bias_'):
-            # set forget bias to 1
-            n = p.size(0)
-            start, end = n // 4, n // 2
-            p.data.fill_(0.)
-            p.data[start:end].fill_(1.)
-
-
-def init_linear_wt(linear, trunc_norm_init_std=1e-4):
-    linear.weight.data.normal_(std=trunc_norm_init_std)
-    if linear.bias is not None:
-        linear.bias.data.normal_(std=trunc_norm_init_std)
-
-
-def init_wt_normal(wt, trunc_norm_init_std=1e-4):
-    wt.data.normal_(std=trunc_norm_init_std)
-
-
-def init_wt_unif(wt, rand_unif_init_mag=0.02):
-    wt.data.uniform_(-rand_unif_init_mag, rand_unif_init_mag)
-
-
 class CustomAttention(torch.nn.Module):
     def __init__(self,
                  hidden_size: int):
@@ -99,12 +73,10 @@ class Seq2Seq(Model):
                  target_namespace: str = "tokens",
                  target_embedding_dim: int = None,
                  projection_dim: int = None,
-                 tie_embeddings: bool = False,
-                 custom_init: bool = False) -> None:
+                 tie_embeddings: bool = False) -> None:
         super(Seq2Seq, self).__init__(vocab)
         self._target_namespace = target_namespace
         self._tie_embeddings = tie_embeddings
-        self._custom_init = custom_init
 
         self._start_index = self.vocab.get_token_index(START_SYMBOL, self._target_namespace)
         self._end_index = self.vocab.get_token_index(END_SYMBOL, self._target_namespace)
@@ -113,15 +85,12 @@ class Seq2Seq(Model):
         self._source_embedder = source_embedder
         assert "token_embedder_tokens" in dict(self._source_embedder.named_children())
         token_embedder = dict(self._source_embedder.named_children())["token_embedder_tokens"]
-        init_wt_normal(token_embedder.weight)
 
         # Encoder
         self._encoder = encoder
         self._encoder_output_dim = self._encoder.get_output_dim()
         self.reduce_h = Linear(self._encoder.get_output_dim(), self._encoder.get_output_dim() // 2)
-        init_linear_wt(self.reduce_h)
         self.reduce_c = Linear(self._encoder.get_output_dim(), self._encoder.get_output_dim() // 2)
-        init_linear_wt(self.reduce_c)
         self._feature_projection_layer = Linear(self._encoder.get_output_dim(),
             self._encoder.get_output_dim(), bias=False)
 
@@ -129,7 +98,6 @@ class Seq2Seq(Model):
         num_classes = self.vocab.get_vocab_size(self._target_namespace)
         target_embedding_dim = target_embedding_dim or source_embedder.get_output_dim()
         self._target_embedder = Embedding(num_classes, target_embedding_dim)
-        init_wt_normal(self._target_embedder.weight)
         if self._tie_embeddings:
             assert "token_embedder_tokens" in dict(self._source_embedder.named_children())
             source_token_embedder = dict(self._source_embedder.named_children())["token_embedder_tokens"]
@@ -140,7 +108,6 @@ class Seq2Seq(Model):
         self._decoder_output_dim = self._encoder_output_dim // 2
         self._decoder_input_projection = Linear(self._decoder_output_dim * 2 + target_embedding_dim, self._decoder_input_dim)
         self._decoder_cell = LSTMCell(self._decoder_input_dim, self._decoder_output_dim)
-        init_lstm_weights(self._decoder_cell)
 
         # Attention
         self._attention = CustomAttention(self._encoder_output_dim // 2)
