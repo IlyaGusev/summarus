@@ -64,7 +64,7 @@ class CustomAttention(torch.nn.Module):
 
 
 @Model.register("seq2seq")
-class Seq2Seq(Model):
+class Seq2Seq(SimpleSeq2Seq):
     def __init__(self,
                  vocab: Vocabulary,
                  source_embedder: TextFieldEmbedder,
@@ -75,9 +75,10 @@ class Seq2Seq(Model):
                  target_embedding_dim: int = None,
                  projection_dim: int = None,
                  tie_embeddings: bool = False) -> None:
-        super(Seq2Seq, self).__init__(vocab)
+        super(SimpleSeq2Seq, self).__init__(vocab)
         self._target_namespace = target_namespace
         self._tie_embeddings = tie_embeddings
+        self._scheduled_sampling_ratio = 0.
 
         self._start_index = self.vocab.get_token_index(START_SYMBOL, self._target_namespace)
         self._end_index = self.vocab.get_token_index(END_SYMBOL, self._target_namespace)
@@ -116,177 +117,24 @@ class Seq2Seq(Model):
         # Prediction
         self._projection_dim = projection_dim or self._source_embedder.get_output_dim()
         self._hidden_projection_layer = Linear(self._decoder_output_dim * 3, self._projection_dim)
-        self._output_projection_layer = Linear(self._projection_dim, num_classes) 
+        self._output_projection_layer = Linear(self._projection_dim, num_classes)
 
         # Misc
         self._max_decoding_steps = max_decoding_steps
         self._beam_search = BeamSearch(self._end_index, max_steps=max_decoding_steps, beam_size=beam_size) if beam_size else None
 
-    def take_step(self,
-                  last_predictions: torch.Tensor,
-                  state: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
-        # shape: (group_size, num_classes)
-        output_projections, state = self._prepare_output_projections(last_predictions, state)
+        self._bleu = False
 
-        # shape: (group_size, num_classes)
-        class_log_probabilities = F.log_softmax(output_projections, dim=-1)
-
-        return class_log_probabilities, state
-
-    @overrides
-    def forward(self,  # type: ignore
-                source_tokens: Dict[str, torch.LongTensor],
-                target_tokens: Dict[str, torch.LongTensor] = None) -> Dict[str, torch.Tensor]:
-        # pylint: disable=arguments-differ
-        state = self._init_encoded_state(source_tokens)
-
-        if target_tokens or not self._beam_search:
-            return self._forward_loop(state, target_tokens=target_tokens)
-
-        return self._forward_beam_search(state)
-
-    @overrides
-    def decode(self, output_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        predicted_indices = output_dict["predictions"]
-        if not isinstance(predicted_indices, numpy.ndarray):
-            predicted_indices = predicted_indices.detach().cpu().numpy()
-        all_predicted_tokens = []
-        for indices in predicted_indices:
-            if len(indices.shape) > 1:
-                indices = indices[0]
-            indices = list(indices)
-            if self._end_index in indices:
-                indices = indices[:indices.index(self._end_index)]
-            predicted_tokens = [self.vocab.get_token_from_index(x, namespace=self._target_namespace)
-                                for x in indices]
-            all_predicted_tokens.append(predicted_tokens)
-        output_dict["predicted_tokens"] = all_predicted_tokens
-        return output_dict
-
-    def _init_encoded_state(self, source_tokens: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        # shape: (batch_size, max_input_sequence_length, encoder_input_dim)
-        embedded_input = self._source_embedder(source_tokens)
-
-        batch_size, _, _ = embedded_input.size()
-
-        # shape: (batch_size, max_input_sequence_length)
-        source_mask = util.get_text_field_mask(source_tokens)
-
-        # shape: (batch_size, max_input_sequence_length, encoder_output_dim)
-        encoder_outputs = self._encoder(embedded_input, source_mask)
-        final_encoder_output = util.get_final_encoder_states(
-            encoder_outputs, source_mask, self._encoder.is_bidirectional())
-        decoder_hidden = final_encoder_output
-        decoder_hidden = F.relu(self.reduce_h(decoder_hidden))
-
-        decoder_context = encoder_outputs.new_zeros(batch_size, self._decoder_output_dim)
-
-        encoder_outputs = encoder_outputs.contiguous()
-        encoder_feature = self._feature_projection_layer(encoder_outputs)
-
-        state = {
-                "source_mask": source_mask,
-                "encoder_outputs": encoder_outputs,
-                "encoder_feature": encoder_feature,
-                "decoder_hidden": decoder_hidden,
-                "decoder_context": decoder_context
-        }
-
-        return state
-
-    def _forward_loop(self,
-                      state: Dict[str, torch.Tensor],
-                      target_tokens: Dict[str, torch.LongTensor] = None) -> Dict[str, torch.Tensor]:
-        # shape: (batch_size, max_input_sequence_length)
-        source_mask = state["source_mask"]
-
-        batch_size = source_mask.size()[0]
-
-        if target_tokens:
-            # shape: (batch_size, max_target_sequence_length)
-            targets = target_tokens["tokens"]
-
-            _, target_sequence_length = targets.size()
-
-            # The last input from the target is either padding or the end symbol.
-            # Either way, we don't have to process it.
-            num_decoding_steps = target_sequence_length - 1
-        else:
-            num_decoding_steps = self._max_decoding_steps
-
-        # Initialize target predictions with the start index.
-        # shape: (batch_size,)
-        last_predictions = source_mask.new_full((batch_size,), fill_value=self._start_index)
-
-        step_logits: List[torch.Tensor] = []
-        step_probabilities: List[torch.Tensor] = []
-        step_predictions: List[torch.Tensor] = []
-        for timestep in range(num_decoding_steps):
-            if not target_tokens:
-                # shape: (batch_size,)
-                input_choices = last_predictions
-            else:
-                # shape: (batch_size,)
-                input_choices = targets[:, timestep]
-
-            # shape: (batch_size, num_classes)
-            output_projections, state = self._prepare_output_projections(input_choices, state)
-
-            # list of tensors, shape: (batch_size, 1, num_classes)
-            step_logits.append(output_projections.unsqueeze(1))
-
-            # shape: (batch_size, num_classes)
-            class_probabilities = F.softmax(output_projections, dim=-1)
-
-            # list of tensors, shape: (batch_size, 1, num_classes)
-            step_probabilities.append(class_probabilities.unsqueeze(1))
-
-            # shape (predicted_classes): (batch_size,)
-            _, predicted_classes = torch.max(class_probabilities, 1)
-
-            # shape (predicted_classes): (batch_size,)
-            last_predictions = predicted_classes
-
-            # list of tensors, shape: (batch_size, 1)
-            step_predictions.append(last_predictions.unsqueeze(1))
-
-        # shape: (batch_size, num_decoding_steps, num_classes)
-        logits = torch.cat(step_logits, 1)
-
-        # shape: (batch_size, num_decoding_steps, num_classes)
-        class_probabilities = torch.cat(step_probabilities, 1)
-
-        # shape: (batch_size, num_decoding_steps)
-        all_predictions = torch.cat(step_predictions, 1)
-
-        output_dict = {
-                "logits": logits,
-                "class_probabilities": class_probabilities,
-                "predictions": all_predictions,
-        }
-
-        # Compute loss.
-        if target_tokens:
-            target_mask = util.get_text_field_mask(target_tokens)
-            loss = self._get_loss(logits, targets, target_mask)
-            output_dict["loss"] = loss
-
-        return output_dict
-
-    def _forward_beam_search(self, state: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def _init_decoder_state(self, state: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         batch_size = state["source_mask"].size(0)
-        start_predictions = state["source_mask"].new_full((batch_size,), fill_value=self._start_index)
-
-        # shape (all_top_k_predictions): (batch_size, beam_size, num_decoding_steps)
-        # shape (log_probabilities): (batch_size, beam_size)
-        all_top_k_predictions, log_probabilities = self._beam_search.search(
-                start_predictions, state, self.take_step)
-
-        output_dict = {
-                "class_log_probabilities": log_probabilities,
-                "predictions": all_top_k_predictions,
-        }
-        return output_dict
+        final_encoder_output = util.get_final_encoder_states(
+            state["encoder_outputs"],
+            state["source_mask"],
+            self._encoder.is_bidirectional())
+        state["decoder_hidden"] = F.relu(self.reduce_h(final_encoder_output))
+        #state["decoder_hidden"] = final_encoder_output
+        state["decoder_context"] = state["encoder_outputs"].new_zeros(batch_size, self._decoder_output_dim)
+        return state
 
     def _prepare_output_projections(self,
                                     last_predictions: torch.Tensor,
@@ -301,7 +149,6 @@ class Seq2Seq(Model):
         # shape: (group_size, decoder_output_dim)
         decoder_context = state["decoder_context"]
 
-        encoder_feature = state["encoder_feature"]
         # shape: (group_size, target_embedding_dim)
         embedded_input = self._target_embedder(last_predictions)
 
@@ -319,6 +166,7 @@ class Seq2Seq(Model):
         decoder_state = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim),
                                    decoder_context.view(-1, self._decoder_output_dim)), 1)
 
+        encoder_feature = self._feature_projection_layer(state["encoder_outputs"].contiguous())
         context, attn_scores = self._attention(decoder_state, encoder_outputs, encoder_feature, source_mask)
         output = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim), context), 1)  # B x hidden_dim * 3
         output_projections = self._output_projection_layer(self._hidden_projection_layer(output))
@@ -329,14 +177,3 @@ class Seq2Seq(Model):
 
         return output_projections, state
 
-    @staticmethod
-    def _get_loss(logits: torch.LongTensor,
-                  targets: torch.LongTensor,
-                  target_mask: torch.LongTensor) -> torch.Tensor:
-        # shape: (batch_size, num_decoding_steps)
-        relevant_targets = targets[:, 1:].contiguous()
-
-        # shape: (batch_size, num_decoding_steps)
-        relevant_mask = target_mask[:, 1:].contiguous()
-
-        return util.sequence_cross_entropy_with_logits(logits, relevant_targets, relevant_mask)

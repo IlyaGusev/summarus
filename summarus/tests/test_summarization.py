@@ -33,6 +33,7 @@ class TestSummarizationModel(unittest.TestCase):
         trainer.train()
 
     def test_model(self):
+        self.model.training = False
         predictor = SimpleSeq2SeqPredictor(self.model, self.reader)
         for article, reference_sents in self.reader.parse_files(TEST_URLS_FILE):
             decoded_words = predictor.predict(article)["predicted_tokens"]
