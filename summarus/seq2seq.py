@@ -46,7 +46,7 @@ class CustomAttention(torch.nn.Module):
         encoder_feature = encoder_feature.contiguous().view(-1, n)
 
         features = encoder_feature + decoder_feature
-        scores = self.v(F.tanh(features))
+        scores = self.v(torch.tanh(features))
         scores = scores.view(-1, l)
 
         mask = mask.float()
