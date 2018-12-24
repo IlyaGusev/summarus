@@ -1,74 +1,18 @@
 import os
 import logging
 
-# from rouge import Rouge
 from pyrouge import Rouge155
-from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.params import Params
-from allennlp.data.iterators.data_iterator import DataIterator
-from allennlp.data.dataset_readers.dataset_reader import DatasetReader
-from allennlp.training.trainer import Trainer
 from allennlp.models.model import Model
 from allennlp.predictors.simple_seq2seq import SimpleSeq2SeqPredictor
 
-from summarus.seq2seq import Seq2Seq
 from summarus.datasets.cnn_dailymail_reader import CNNDailyMailReader
-
-train_urls = "/data/cnn_dailymail/all_train.txt"
-val_urls = "/data/cnn_dailymail/all_val.txt"
-test_urls = "/data/cnn_dailymail/all_test.txt"
-cnn_dir = "/data/cnn_dailymail/cnn_stories_tokenized"
-dm_dir = "/data/cnn_dailymail/dm_stories_tokenized"
-train_cache = "/data/cnn_dailymail/train.pickle"
-val_cache = "/data/cnn_dailymail/val.pickle"
 
 
 def make_html_safe(s):
     s.replace("<", "&lt;")
     s.replace(">", "&gt;")
     return s
-
-
-def make_vocab(vocabulary_path, separate_namespaces=False):
-    reader = CNNDailyMailReader(cnn_tokenized_dir=cnn_dir, dm_tokenized_dir=dm_dir,
-                                separate_namespaces=separate_namespaces)
-    train_dataset = reader.read(train_urls)
-    val_dataset = reader.read(val_urls)
-    test_dataset = reader.read(test_urls)
-    vocabulary = Vocabulary.from_instances(test_dataset)
-    vocabulary.extend_from_instances(Params({}), val_dataset)
-    vocabulary.extend_from_instances(Params({}), train_dataset)
-    vocabulary.save_to_files(vocabulary_path)
-    return vocabulary
-
-
-def train(model_name):
-    models_path = "models"
-    model_path = os.path.join(models_path, model_name)
-    vocabulary_path = os.path.join(model_path, "vocabulary")
-    params_path = os.path.join(model_path, "config.json")
-    params = Params.from_file(params_path)
-
-    if os.path.exists(vocabulary_path):
-        vocabulary = Vocabulary.from_files(vocabulary_path, )
-    else:
-        vocabulary = make_vocab(vocabulary_path)
-
-    reader = CNNDailyMailReader.from_params(params.pop("reader"), cnn_tokenized_dir=cnn_dir, dm_tokenized_dir=dm_dir)
-    train_dataset = reader.read(train_urls)
-    val_dataset = reader.read(val_urls)
-
-    model_params = params.pop("model")
-    model_params.pop("type")
-    model = Seq2Seq.from_params(model_params, vocab=vocabulary)
-    print(model)
-    print("Trainable params count: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
-
-    iterator = DataIterator.from_params(params.pop('iterator'))
-    iterator.index_with(vocabulary)
-    trainer = Trainer.from_params(model, model_path, iterator,
-                                  train_dataset, val_dataset, params.pop('trainer'))
-    trainer.train()
 
 
 def rouge_log(results_dict):
@@ -86,7 +30,7 @@ def rouge_log(results_dict):
     print(log_str)
 
 
-def evaluate(model_name):
+def evaluate(model_path, test_urls, cnn_dir, dm_dir):
     models_path = "models"
     model_path = os.path.join(models_path, model_name)
     params_path = os.path.join(model_path, "config.json")
@@ -108,7 +52,7 @@ def evaluate(model_name):
 
     count = 0
     predictor = SimpleSeq2SeqPredictor(model, reader)
-    for article, reference_sents in reader.parse_files(val_urls):
+    for article, reference_sents in reader.parse_files(test_urls):
         decoded_words = predictor.predict(article)["predicted_tokens"]
         decoded_sents = []
         while len(decoded_words) > 0:
@@ -151,4 +95,26 @@ def evaluate(model_name):
     rouge_log(scores)
 
 
-train("external4")
+def main(model_name,
+         test_urls="/data/cnn_dailymail/all_test.txt",
+         cnn_dir="/data/cnn_dailymail/cnn_stories_tokenized",
+         dm_dir="/data/cnn_dailymail/dm_stories_tokenized"):
+    assert model_name
+    models_path = "models"
+    model_path = os.path.join(models_path, model_name)
+    assert os.path.isdir(model_path):
+    evaluate(model_path, test_urls, cnn_dir, dm_dir)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model-name', required=True)
+    parser.add_argument('--test-urls')
+    parser.add_argument('--cnn-dir')
+    parser.add_argument('--dm-dir')
+    args = parser.parse_args()
+    if not args.train_urls:
+        main(args.model_name)
+    else:
+        main(args.model_name, args.test_urls, args.cnn_dir, args.dm_dir)
+
