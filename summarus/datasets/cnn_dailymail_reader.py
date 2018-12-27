@@ -41,10 +41,10 @@ def get_file_names_by_urls(cnn_tokenized_dir, dm_tokenized_dir, urls_file_path):
             dirs = (cnn_tokenized_dir, dm_tokenized_dir)
             file_names = [os.path.join(d, file_name) for d in dirs if d is not None]
             file_found = False
-            for file_name in file_names:
-                if os.path.isfile(file_name):
+            for f in file_names:
+                if os.path.isfile(f):
                     file_found = True
-                    yield file_name
+                    yield f
                     break
             assert file_found, "File not found in tokenized dir: " + file_name
 
