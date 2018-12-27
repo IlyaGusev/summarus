@@ -43,6 +43,9 @@
     }
   },
   "reader": {
-    "separate_namespaces": false
+    "separate_namespaces": false,
+    "type": "cnn_dailymail",
+    "cnn_tokenized_dir": "/data/cnn_dailymail/cnn_stories_tokenized",
+    "dm_tokenized_dir": "/data/cnn_dailymail/dm_stories_tokenized"
   }
 }
