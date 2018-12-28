@@ -63,12 +63,13 @@ class LentaReader(DatasetReader):
             })
 
     def parse_files(self, path):
-         with open(file_path, "r", encoding="utf-8") as r:
+         with open(path, "r", encoding="utf-8") as r:
             reader = csv.reader(r, delimiter=",", quotechar='"')
             header = next(reader)
             assert header[1] == "title"
             assert header[2] == "text"
             for row in reader:
+                assert len(row) >= 3
                 title, text = row[1], row[2]
                 if not text or not title:
                     continue

@@ -55,7 +55,13 @@ def evaluate(model_path, test_path):
 
     count = 0
     predictor = SimpleSeq2SeqPredictor(model, reader)
-    for article, reference_sents in reader.parse_files(test_path):
+    for article, abstract in reader.parse_files(test_path):
+        if isinstance(abstract, list):
+            reference_sents = abstract
+        elif isinstance(abstract, basestring):
+            reference_sents = abstract.split(".")
+        else:
+            assert False
         decoded_words = predictor.predict(article)["predicted_tokens"]
         decoded_sents = []
         while len(decoded_words) > 0:
