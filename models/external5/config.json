@@ -26,23 +26,26 @@
   "iterator": {
     "type": "bucket",
     "sorting_keys": [["source_tokens", "num_tokens"]],
-    "batch_size": 5,
+    "batch_size": 12,
     "padding_noise": 0.0,
     "cache_instances": true
   },
   "trainer": {
-    "num_epochs": 50,
+    "num_epochs": 10,
     "grad_norm": 2.0,
-    "cuda_device": -1,
+    "cuda_device": 0,
     "summary_interval": 1,
     "shuffle": false,
     "should_log_parameter_statistics": false,
     "optimizer": {
       "type": "adam",
-      "lr": 0.01
+      "lr": 0.001
     }
   },
   "reader": {
-    "separate_namespaces": false
+    "separate_namespaces": false,
+    "type": "cnn_dailymail",
+    "cnn_tokenized_dir": "/data/cnn_dailymail/cnn_stories_tokenized",
+    "dm_tokenized_dir": "/data/cnn_dailymail/dm_stories_tokenized"
   }
 }
