@@ -38,17 +38,9 @@ class LentaReader(DatasetReader):
                                          {"tokens": SingleIdTokenIndexer(namespace="title_tokens")}
 
     def _read(self, file_path: str) -> Iterable[Instance]:
-        with open(file_path, "r", encoding="utf-8") as r:
-            reader = csv.reader(r, delimiter=",", quotechar='"')
-            header = next(reader)
-            assert header[1] == "title"
-            assert header[2] == "text"
-            for row in reader:
-                title, text = row[1], row[2]
-                if not text or not title:
-                    continue
-                instance = self.text_to_instance(text, title)
-                yield instance
+        for text, title in self.parse_files(file_path):
+            instance = self.text_to_instance(text, title)
+            yield instance
 
     def text_to_instance(self, text: str, title: str = None) -> Instance:
         tokenized_text = self._tokenizer.tokenize(text)[:self._text_max_tokens]
@@ -70,3 +62,14 @@ class LentaReader(DatasetReader):
                 'source_tokens': text_field,
             })
 
+    def parse_files(self, path):
+         with open(file_path, "r", encoding="utf-8") as r:
+            reader = csv.reader(r, delimiter=",", quotechar='"')
+            header = next(reader)
+            assert header[1] == "title"
+            assert header[2] == "text"
+            for row in reader:
+                title, text = row[1], row[2]
+                if not text or not title:
+                    continue
+                yield text, title
