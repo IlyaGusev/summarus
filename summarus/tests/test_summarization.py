@@ -8,7 +8,7 @@ from allennlp.training.trainer import Trainer
 from allennlp.predictors.simple_seq2seq import SimpleSeq2SeqPredictor
 
 from summarus.seq2seq import Seq2Seq
-from summarus.datasets.cnn_dailymail_reader import CNNDailyMailReader
+from summarus.readers.cnn_dailymail_reader import CNNDailyMailReader
 from summarus.settings import DATA_DIR, TEST_URLS_FILE, TEST_CONFIG, TEST_STORIES_DIR
 
 

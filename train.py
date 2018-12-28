@@ -9,8 +9,8 @@ from allennlp.training.trainer import Trainer
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 
 from summarus.seq2seq import Seq2Seq
-from summarus.datasets.cnn_dailymail_reader import CNNDailyMailReader
-from summarus.datasets.contracts_reader import ContractsReader
+from summarus.readers.cnn_dailymail_reader import CNNDailyMailReader
+from summarus.readers.contracts_reader import ContractsReader
 from summarus.settings import DEFAULT_CONFIG
 
 
@@ -69,7 +69,6 @@ if __name__ == "__main__":
     parser.add_argument('--model-name', required=True)
     parser.add_argument('--train-path')
     parser.add_argument('--val-path')
-    parser.add_argument('--test-path')
     args = parser.parse_args()
     if not args.train_path:
         main(args.model_name)

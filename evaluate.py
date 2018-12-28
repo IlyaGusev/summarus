@@ -9,8 +9,8 @@ from allennlp.predictors.simple_seq2seq import SimpleSeq2SeqPredictor
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 
 from summarus.seq2seq import Seq2Seq
-from summarus.datasets.cnn_dailymail_reader import CNNDailyMailReader
-from summarus.datasets.contracts_reader import ContractsReader
+from summarus.readers.cnn_dailymail_reader import CNNDailyMailReader
+from summarus.readers.contracts_reader import ContractsReader
 
 
 def make_html_safe(s):
@@ -58,7 +58,7 @@ def evaluate(model_path, test_path):
     for article, abstract in reader.parse_files(test_path):
         if isinstance(abstract, list):
             reference_sents = abstract
-        elif isinstance(abstract, basestring):
+        elif isinstance(abstract, str):
             reference_sents = abstract.split(".")
         else:
             assert False
