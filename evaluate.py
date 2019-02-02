@@ -93,15 +93,15 @@ def evaluate(model_path, test_path):
             w.write(article)
         count += 1
 
-    # r = Rouge155(rouge_dir="/home/yallen/ROUGE-1.5.5")
-    # r.model_filename_pattern = '#ID#_reference.txt'
-    # r.system_filename_pattern = '(\d+)_decoded.txt'
-    # r.model_dir = ref_dir
-    # r.system_dir = hyp_dir
-    # logging.getLogger('global').setLevel(logging.WARNING)  # silence pyrouge logging
-    # rouge_results = r.convert_and_evaluate()
-    # scores = r.output_to_dict(rouge_results)
-    # rouge_log(scores)
+    r = Rouge155(rouge_dir="/home/yallen/ROUGE-1.5.5")
+    r.model_filename_pattern = '#ID#_reference.txt'
+    r.system_filename_pattern = '(\d+)_decoded.txt'
+    r.model_dir = ref_dir
+    r.system_dir = hyp_dir
+    logging.getLogger('global').setLevel(logging.WARNING)  # silence pyrouge logging
+    rouge_results = r.convert_and_evaluate()
+    scores = r.output_to_dict(rouge_results)
+    rouge_log(scores)
 
 
 def main(model_name,

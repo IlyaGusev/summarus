@@ -14,30 +14,23 @@ from summarus.readers.contracts_reader import ContractsReader
 from summarus.settings import DEFAULT_CONFIG
 
 
-def make_vocab(vocabulary_path, train_path, reader_params):
-    max_vocab_size = reader_params.pop("max_vocab_size")
-    reader = DatasetReader.from_params(reader_params)
-    train_dataset = reader.read(train_path)
-    vocabulary = Vocabulary.from_instances(train_dataset, max_vocab_size=max_vocab_size)
-    vocabulary.save_to_files(vocabulary_path)
-    return vocabulary
-
-
 def train(model_path, train_path, val_path):
-    vocabulary_path = os.path.join(model_path, "vocabulary")
     params_path = os.path.join(model_path, "config.json")
     params = Params.from_file(params_path)
-    reader_params = params.pop("reader")
 
-    if os.path.exists(vocabulary_path):
-        max_vocab_size = reader_params.duplicate().pop("max_vocab_size")
-        vocabulary = Vocabulary.from_files(vocabulary_path, max_vocab_size=max_vocab_size)
-    else:
-        vocabulary = make_vocab(vocabulary_path, train_path, reader_params.duplicate())
-
+    reader_params = params.duplicate().pop("reader", default=Params({}))
     reader = DatasetReader.from_params(reader_params)
     train_dataset = reader.read(train_path)
-    val_dataset = reader.read(val_path)
+
+    vocabulary_path = os.path.join(model_path, "vocabulary")
+    vocabulary_params = params.pop("vocabulary", default=Params({}))
+    if os.path.exists(vocabulary_path):
+        vocabulary = Vocabulary.from_files(vocabulary_path)
+    else:
+        vocabulary = Vocabulary.from_params(vocabulary_params, instances=train_dataset)
+        vocabulary.save_to_files(vocabulary_path)
+
+    val_dataset = reader.read(val_path) if val_path else None
 
     model_params = params.pop("model")
     model_params.pop("type")
