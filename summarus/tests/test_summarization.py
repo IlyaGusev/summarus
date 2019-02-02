@@ -35,7 +35,7 @@ class TestSummarizationModel(unittest.TestCase):
     def test_model(self):
         self.model.training = False
         predictor = SimpleSeq2SeqPredictor(self.model, self.reader)
-        for article, reference_sents in self.reader.parse_files(TEST_URLS_FILE):
+        for article, reference_sents in self.reader.parse_set(TEST_URLS_FILE):
             decoded_words = predictor.predict(article)["predicted_tokens"]
-            self.assertListEqual(decoded_words, reference_sents[0].split())
+            self.assertListEqual(decoded_words, reference_sents.split())
 

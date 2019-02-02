@@ -23,5 +23,10 @@ class TestReaders(unittest.TestCase):
         reader = RIAReader()
         dataset = reader.read(RIA_EXAMPLE_FILE)
         for sample in dataset:
-            print(sample.fields["source_tokens"])
-            print(sample.fields["target_tokens"])
+            self.assertEqual(sample.fields["source_tokens"][0].text, START_SYMBOL)
+            self.assertEqual(sample.fields["source_tokens"][-1].text, END_SYMBOL)
+            self.assertGreater(len(sample.fields["source_tokens"]), 2)
+
+            self.assertEqual(sample.fields["target_tokens"][0].text, START_SYMBOL)
+            self.assertEqual(sample.fields["target_tokens"][-1].text, END_SYMBOL)
+            self.assertGreater(len(sample.fields["target_tokens"]), 2)

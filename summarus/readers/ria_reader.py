@@ -37,5 +37,7 @@ class RIAReader(SummarizationReader):
                 data = json.loads(line.strip())
                 title = data["title"]
                 text = data["text"]
-                clean_text = BeautifulSoup(text, "lxml").text
+                clean_text = BeautifulSoup(text, 'html.parser').text
+                if not clean_text or not title:
+                    continue
                 yield clean_text, title

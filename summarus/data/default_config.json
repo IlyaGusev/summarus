@@ -44,6 +44,7 @@
   },
   "reader": {
     "separate_namespaces": false,
+    "max_vocab_size": 50000,
     "type": "cnn_dailymail",
     "cnn_tokenized_dir": "/data/cnn_dailymail/cnn_stories_tokenized",
     "dm_tokenized_dir": "/data/cnn_dailymail/dm_stories_tokenized"
