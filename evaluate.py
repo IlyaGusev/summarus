@@ -81,7 +81,7 @@ def evaluate(model_path, test_path, metric, is_multiple_ref, max_count, report_e
             print("Ref: ", ref)
             print("Hyp: ", hyp)
 
-        if len(hyps) >= max_count:
+        if max_count and len(hyps) >= max_count:
             break
 
     if metric == "bleu":
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     parser.add_argument('--test-path')
     parser.add_argument('--metric', choices=("rouge", "bleu"))
     parser.add_argument('--is-multiple-ref', dest='is_multiple_ref', action='store_true')
-    parser.add_argument('--max-count', default=None)
+    parser.add_argument('--max-count', type=int, default=None)
     parser.add_argument('--report-every', type=int, default=100)
     parser.set_defaults(is_multiple_ref=False)
 

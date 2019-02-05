@@ -45,7 +45,7 @@ def train(model_path, train_path, val_path):
     trainer.train()
 
 
-def main(model_name, train_path, val_path)
+def main(model_name, train_path, val_path):
     assert model_name
     models_path = "models"
     model_path = os.path.join(models_path, model_name)
