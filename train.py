@@ -45,9 +45,7 @@ def train(model_path, train_path, val_path):
     trainer.train()
 
 
-def main(model_name,
-         train_path="/data/cnn_dailymail/all_train.txt",
-         val_path="/data/cnn_dailymail/all_val.txt"):
+def main(model_name, train_path, val_path)
     assert model_name
     models_path = "models"
     model_path = os.path.join(models_path, model_name)
@@ -62,11 +60,8 @@ def main(model_name,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--model-name', required=True)
-    parser.add_argument('--train-path')
-    parser.add_argument('--val-path')
+    parser.add_argument('--train-path', required=True)
+    parser.add_argument('--val-path', default=None)
     args = parser.parse_args()
-    if not args.train_path:
-        main(args.model_name)
-    else:
-        main(args.model_name, args.train_path, args.val_path)
+    main(args.model_name, args.train_path, args.val_path)
 
