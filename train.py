@@ -14,22 +14,17 @@ from summarus.readers.contracts_reader import ContractsReader
 from summarus.settings import DEFAULT_CONFIG
 
 
-def train(model_path, train_path, val_path):
-    params_path = os.path.join(model_path, "config.json")
+def train(model_path, train_path, val_path, vocabulary_path=None, config_path=None):
+    params_path = config_path or os.path.join(model_path, "config.json")
     params = Params.from_file(params_path)
+
+    vocabulary_path = vocabulary_path or os.path.join(model_path, "vocabulary")
+    assert os.path.exists(vocabulary_path), "Vocabulary is not ready, run preprocess.py first"
+    vocabulary = Vocabulary.from_files(vocabulary_path)
 
     reader_params = params.duplicate().pop("reader", default=Params({}))
     reader = DatasetReader.from_params(reader_params)
     train_dataset = reader.read(train_path)
-
-    vocabulary_path = os.path.join(model_path, "vocabulary")
-    vocabulary_params = params.pop("vocabulary", default=Params({}))
-    if os.path.exists(vocabulary_path):
-        vocabulary = Vocabulary.from_files(vocabulary_path)
-    else:
-        vocabulary = Vocabulary.from_params(vocabulary_params, instances=train_dataset)
-        vocabulary.save_to_files(vocabulary_path)
-
     val_dataset = reader.read(val_path) if val_path else None
 
     model_params = params.pop("model")
@@ -45,23 +40,13 @@ def train(model_path, train_path, val_path):
     trainer.train()
 
 
-def main(model_name, train_path, val_path):
-    assert model_name
-    models_path = "models"
-    model_path = os.path.join(models_path, model_name)
-    if not os.path.isdir(model_path):
-        os.makedirs(model_path)
-    config_path = os.path.join(model_path, "config.json")
-    if not os.path.isfile(config_path):
-        copyfile(DEFAULT_CONFIG, config_path)
-    train(model_path, train_path, val_path)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model-name', required=True)
+    parser.add_argument('--model-path', required=True)
     parser.add_argument('--train-path', required=True)
     parser.add_argument('--val-path', default=None)
+    parser.add_argument('--vocabulary-path', default=None)
+    parser.add_argument('--config-path', default=None)
     args = parser.parse_args()
-    main(args.model_name, args.train_path, args.val_path)
+    train(**vars(args))
 
