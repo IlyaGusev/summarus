@@ -35,8 +35,8 @@ def rouge_log(results_dict):
     print(log_str)
 
 
-def evaluate(model_path, test_path, metric, is_multiple_ref, max_count, report_every):
-    params_path = os.path.join(model_path, "config.json")
+def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_count, report_every):
+    params_path = config_path or os.path.join(model_path, "config.json")
 
     params = Params.from_file(params_path)
     reader = DatasetReader.from_params(params.pop("reader"))
@@ -117,18 +117,15 @@ def evaluate(model_path, test_path, metric, is_multiple_ref, max_count, report_e
 
 
 def main(**kwargs):
-    assert 'model_name' in kwargs
-    models_path = "models"
-    model_path = os.path.join(models_path, kwargs['model_name'])
-    kwargs.pop('model_name')
-    assert os.path.isdir(model_path)
-    evaluate(model_path, **kwargs)
+    assert os.path.isdir(kwargs['model_path'])
+    evaluate(**kwargs)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model-name', required=True)
-    parser.add_argument('--test-path')
+    parser.add_argument('--model-path', required=True)
+    parser.add_argument('--test-path', required=True)
+    parser.add_argument('--config-path', default=None)
     parser.add_argument('--metric', choices=("rouge", "bleu"))
     parser.add_argument('--is-multiple-ref', dest='is_multiple_ref', action='store_true')
     parser.add_argument('--max-count', type=int, default=None)
