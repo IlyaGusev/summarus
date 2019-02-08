@@ -2,12 +2,10 @@ import os
 import logging
 import argparse
 
-from pyrouge import Rouge155
 from allennlp.common.params import Params
 from allennlp.models.model import Model
 from allennlp.predictors.simple_seq2seq import SimpleSeq2SeqPredictor
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
-from nltk.translate.bleu_score import corpus_bleu
 
 from summarus.seq2seq import Seq2Seq
 from summarus.readers.cnn_dailymail_reader import CNNDailyMailReader
@@ -85,9 +83,11 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
             break
 
     if metric == "bleu":
+        from nltk.translate.bleu_score import corpus_bleu
         print("BLEU: ", corpus_bleu(refs, hyps))
 
     if metric == "rouge":
+        from pyrouge import Rouge155
         eval_dir = os.path.join(model_path, "eval")
         ref_dir = os.path.join(eval_dir, "ref")
         hyp_dir = os.path.join(eval_dir, "hyp")
