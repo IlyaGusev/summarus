@@ -7,6 +7,7 @@ from allennlp.common.params import Params
 from allennlp.data.iterators.data_iterator import DataIterator
 from allennlp.training.trainer import Trainer
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
+from allennlp.models.model import Model
 
 from summarus.seq2seq import Seq2Seq
 from summarus.readers.cnn_dailymail_reader import CNNDailyMailReader
