@@ -28,8 +28,7 @@ def train(model_path, train_path, val_path, vocabulary_path=None, config_path=No
     val_dataset = reader.read(val_path) if val_path else None
 
     model_params = params.pop("model")
-    model_params.pop("type")
-    model = Seq2Seq.from_params(model_params, vocab=vocabulary)
+    model = Model.from_params(model_params, vocab=vocabulary)
     print(model)
     print("Trainable params count: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
