@@ -37,6 +37,7 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
     params_path = config_path or os.path.join(model_path, "config.json")
 
     params = Params.from_file(params_path)
+    is_subwords = "tokenizer" in params["reader"] and params["reader"]["tokenizer"]["type"] == "subword"
     reader = DatasetReader.from_params(params.pop("reader"))
 
     model = Model.load(params, model_path, cuda_device=0)
@@ -68,7 +69,10 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
             hyp = [make_html_safe(w) for w in decoded_sents]
             ref = [make_html_safe(w) for w in reference_sents]
         else:
-            hyp = " ".join(decoded_words)
+            if not is_subwords:
+                hyp = " ".join(decoded_words)
+            else:
+                hyp = "".join(decoded_words).replace("▁", " ") 
             ref = [target]
 
         hyps.append(hyp)
