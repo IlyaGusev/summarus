@@ -10,6 +10,8 @@ from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.data.tokenizers import Token
 from allennlp.data.fields import TextField
 
+from summarus.subword_tokenizer import SubwordTokenizer
+
 
 class SummarizationReader(DatasetReader):
     def __init__(self,

@@ -2,5 +2,6 @@ numpy >= 1.12.1
 torch == 1.0.0
 allennlp >= 0.8.0
 rouge == 0.3.1
-bs4
 nltk >= 3.4
+sentencepiece >= 0.1.8
+bs4
