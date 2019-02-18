@@ -4,7 +4,7 @@ import argparse
 
 from allennlp.common.params import Params
 from allennlp.models.model import Model
-from allennlp.predictors.simple_seq2seq import SimpleSeq2SeqPredictor
+from allennlp.predictors.seq2seq import Seq2SeqPredictor
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 
 from summarus.seq2seq import Seq2Seq
@@ -47,7 +47,7 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
 
     hyps = []
     refs = []
-    predictor = SimpleSeq2SeqPredictor(model, reader)
+    predictor = Seq2SeqPredictor(model, reader)
     for source, target in reader.parse_set(test_path):
         decoded_words = predictor.predict(source)["predicted_tokens"]
         if is_multiple_ref:
@@ -72,7 +72,7 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
             if not is_subwords:
                 hyp = " ".join(decoded_words)
             else:
-                hyp = "".join(decoded_words).replace("▁", " ") 
+                hyp = "".join(decoded_words[0]).replace("▁", " ") 
             ref = [target]
 
         hyps.append(hyp)
