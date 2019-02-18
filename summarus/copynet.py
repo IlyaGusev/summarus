@@ -27,7 +27,8 @@ class CustomCopyNetSeq2Seq(CopyNetSeq2Seq):
                  source_namespace: str = "source_tokens",
                  target_namespace: str = "target_tokens",
                  tensor_based_metric: Metric = None,
-                 token_based_metric: Metric = None) -> None:
+                 token_based_metric: Metric = None,
+                 tie_embeddings: bool = False) -> None:
         target_embedding_dim = target_embedding_dim or source_embedder.get_output_dim()
         CopyNetSeq2Seq.__init__(
             self,
@@ -44,6 +45,12 @@ class CustomCopyNetSeq2Seq(CopyNetSeq2Seq):
             tensor_based_metric,
             token_based_metric
         )
+        self._tie_embeddings = tie_embeddings
+        if self._tie_embeddings:
+            assert "token_embedder_tokens" in dict(self._source_embedder.named_children())
+            source_token_embedder = dict(self._source_embedder.named_children())["token_embedder_tokens"]
+            self._target_embedder.weight = source_token_embedder.weight
+
         if tensor_based_metric is None:
             self._tensor_based_metric = None
 
