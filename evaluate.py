@@ -72,7 +72,7 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
             if not is_subwords:
                 hyp = " ".join(decoded_words)
             else:
-                hyp = "".join(decoded_words[0]).replace("▁", " ") 
+                hyp = "".join(decoded_words).replace("▁", " ") 
             ref = [target]
 
         hyps.append(hyp)
