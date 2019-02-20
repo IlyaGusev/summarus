@@ -8,7 +8,6 @@ from allennlp.training.trainer import Trainer
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.models.model import Model
 
-from summarus.seq2seq import Seq2Seq
 from summarus.readers.cnn_dailymail_reader import CNNDailyMailReader
 from summarus.readers.contracts_reader import ContractsReader
 from summarus.settings import DEFAULT_CONFIG
