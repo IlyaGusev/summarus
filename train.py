@@ -1,6 +1,5 @@
 import os
 import argparse
-from shutil import copyfile
 
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.params import Params

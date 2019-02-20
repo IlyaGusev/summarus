@@ -38,7 +38,8 @@ class SummarizationReader(DatasetReader):
 
     def _read(self, file_path: str) -> Iterable[Instance]:
         for source, target in self.parse_set(file_path):
-            assert source and target
+            if not source or not target:
+                continue
             instance = self.text_to_instance(source, target)
             yield instance
 

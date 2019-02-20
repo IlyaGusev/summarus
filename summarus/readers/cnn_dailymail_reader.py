@@ -62,7 +62,7 @@ def get_article_and_abstract(story_file, encoding="utf-8") -> Tuple[str, str]:
                 article_lines.append(line)
 
     article = ' '.join(article_lines)
-    abstract = ' <ss> '.join(abstract)
+    abstract = ' s_s '.join(abstract)
     return article, abstract
 
 

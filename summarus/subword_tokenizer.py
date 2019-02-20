@@ -4,6 +4,7 @@ from sentencepiece import SentencePieceProcessor as sp_processor
 from allennlp.data.tokenizers.token import Token
 from allennlp.data.tokenizers.tokenizer import Tokenizer
 
+
 @Tokenizer.register("subword")
 class SubwordTokenizer(Tokenizer):
     def __init__(self, model_path: str=None):

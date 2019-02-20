@@ -54,7 +54,7 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
             if isinstance(target, list):
                 reference_sents = target
             elif isinstance(target, str):
-                reference_sents = target.split(".")
+                reference_sents = target.split(" s_s ")
             else:
                 assert False
             decoded_sents = []
@@ -99,15 +99,15 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
             if not os.path.isdir(d):
                 os.mkdir(d)
 
-        for ref, hyp in zip(refs, hyps):
+        for count, (ref, hyp) in enumerate(zip(refs, hyps)):
             ref_path = os.path.join(ref_dir, str(count) + "_reference.txt")
             hyp_path = os.path.join(hyp_dir, str(count) + "_decoded.txt")
             with open(ref_path, "w", encoding="utf-8") as w:
-                for idx, sent in enumerate(reference_sents):
-                    w.write(sent) if idx == len(reference_sents) - 1 else w.write(sent + "\n")
+                for idx, sent in enumerate(ref):
+                    w.write(sent) if idx == len(ref) - 1 else w.write(sent + "\n")
             with open(hyp_path, "w", encoding="utf-8") as w:
-                for idx, sent in enumerate(decoded_sents):
-                    w.write(sent) if idx == len(decoded_sents) - 1 else w.write(sent + "\n")
+                for idx, sent in enumerate(hyp):
+                    w.write(sent) if idx == len(hyp) - 1 else w.write(sent + "\n")
 
         r = Rouge155(rouge_dir="/home/yallen/ROUGE-1.5.5")
         r.model_filename_pattern = '#ID#_reference.txt'
