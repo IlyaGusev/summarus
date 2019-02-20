@@ -1,6 +1,4 @@
-import os
 import argparse
-import tempfile
 
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.params import Params

@@ -7,9 +7,7 @@ from allennlp.models.model import Model
 from allennlp.predictors.seq2seq import Seq2SeqPredictor
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 
-from summarus.seq2seq import Seq2Seq
-from summarus.readers.cnn_dailymail_reader import CNNDailyMailReader
-from summarus.readers.contracts_reader import ContractsReader
+from summarus import *
 
 
 def make_html_safe(s):

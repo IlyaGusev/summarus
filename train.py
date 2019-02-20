@@ -8,9 +8,7 @@ from allennlp.training.trainer import Trainer
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.models.model import Model
 
-from summarus.readers.cnn_dailymail_reader import CNNDailyMailReader
-from summarus.readers.contracts_reader import ContractsReader
-from summarus.settings import DEFAULT_CONFIG
+from summarus import *
 
 
 def train(model_path, train_path, val_path, vocabulary_path=None, config_path=None):
