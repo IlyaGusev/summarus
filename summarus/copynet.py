@@ -24,7 +24,7 @@ class CustomCopyNetSeq2Seq(CopyNetSeq2Seq):
                  max_decoding_steps: int,
                  target_embedding_dim: int = None,
                  copy_token: str = "@COPY@",
-                 source_namespace: str = "source_tokens",
+                 source_namespace: str = "tokens",
                  target_namespace: str = "target_tokens",
                  tensor_based_metric: Metric = None,
                  token_based_metric: Metric = None,
@@ -46,7 +46,9 @@ class CustomCopyNetSeq2Seq(CopyNetSeq2Seq):
             token_based_metric
         )
         self._tie_embeddings = tie_embeddings
+
         if self._tie_embeddings:
+            assert source_namespace == target_namespace
             assert "token_embedder_tokens" in dict(self._source_embedder.named_children())
             source_token_embedder = dict(self._source_embedder.named_children())["token_embedder_tokens"]
             self._target_embedder.weight = source_token_embedder.weight
