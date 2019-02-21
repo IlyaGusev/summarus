@@ -6,6 +6,7 @@ from allennlp.common.params import Params
 from allennlp.models.model import Model
 from allennlp.predictors.seq2seq import Seq2SeqPredictor
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
+from rouge import Rouge
 
 from summarus import *
 
@@ -14,21 +15,6 @@ def make_html_safe(s):
     s.replace("<", "&lt;")
     s.replace(">", "&gt;")
     return s
-
-
-def rouge_log(results_dict):
-    log_str = ""
-    for x in ["1", "2", "l"]:
-        log_str += "\nROUGE-%s:\n" % x
-        for y in ["f_score", "recall", "precision"]:
-            key = "rouge_%s_%s" % (x,y)
-            key_cb = key + "_cb"
-            key_ce = key + "_ce"
-            val = results_dict[key]
-            val_cb = results_dict[key_cb]
-            val_ce = results_dict[key_ce]
-            log_str += "%s: %.4f with confidence interval (%.4f, %.4f)\n" % (key, val, val_cb, val_ce)
-    print(log_str)
 
 
 def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_count, report_every):
@@ -77,45 +63,20 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
         refs.append(ref)
 
         if len(hyps) % report_every == 0:
-            print("Source: ", source)
+            print("Count: ", len(hyps))
             print("Ref: ", ref)
             print("Hyp: ", hyp)
+            if metric == "bleu":
+                from nltk.translate.bleu_score import corpus_bleu
+                print("BLEU: ", corpus_bleu(refs, hyps))
+
+            if metric == "rouge":
+                rouge = Rouge()
+                scores = rouge.get_scores(hyps, [r[0] for r in refs], avg=True)
+                print("ROUGE: ", scores)
 
         if max_count and len(hyps) >= max_count:
             break
-
-    if metric == "bleu":
-        from nltk.translate.bleu_score import corpus_bleu
-        print("BLEU: ", corpus_bleu(refs, hyps))
-
-    if metric == "rouge":
-        from pyrouge import Rouge155
-        eval_dir = os.path.join(model_path, "eval")
-        ref_dir = os.path.join(eval_dir, "ref")
-        hyp_dir = os.path.join(eval_dir, "hyp")
-        for d in (eval_dir, ref_dir, hyp_dir):
-            if not os.path.isdir(d):
-                os.mkdir(d)
-
-        for count, (ref, hyp) in enumerate(zip(refs, hyps)):
-            ref_path = os.path.join(ref_dir, str(count) + "_reference.txt")
-            hyp_path = os.path.join(hyp_dir, str(count) + "_decoded.txt")
-            with open(ref_path, "w", encoding="utf-8") as w:
-                for idx, sent in enumerate(ref):
-                    w.write(sent) if idx == len(ref) - 1 else w.write(sent + "\n")
-            with open(hyp_path, "w", encoding="utf-8") as w:
-                for idx, sent in enumerate(hyp):
-                    w.write(sent) if idx == len(hyp) - 1 else w.write(sent + "\n")
-
-        r = Rouge155(rouge_dir="/home/yallen/ROUGE-1.5.5")
-        r.model_filename_pattern = '#ID#_reference.txt'
-        r.system_filename_pattern = '(\d+)_decoded.txt'
-        r.model_dir = ref_dir
-        r.system_dir = hyp_dir
-        logging.getLogger('global').setLevel(logging.WARNING)  # silence pyrouge logging
-        rouge_results = r.convert_and_evaluate()
-        scores = r.output_to_dict(rouge_results)
-        rouge_log(scores)
 
 
 def main(**kwargs):
