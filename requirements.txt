@@ -4,4 +4,4 @@ nltk >= 3.4
 sentencepiece == 0.1.8
 beautifulsoup4 == 4.4.1
 git+git://github.com/allenai/allennlp@3a5373f#egg=allennlp
-git+git://github.com/pltrdy/rouge@20072a6#egg=rouge
+rouge == 0.3.1
