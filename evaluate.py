@@ -24,7 +24,8 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
     is_subwords = "tokenizer" in params["reader"] and params["reader"]["tokenizer"]["type"] == "subword"
     reader = DatasetReader.from_params(params.pop("reader"))
 
-    model = Model.load(params, model_path, cuda_device=0)
+    device = 0 if torch.cuda.is_available() else -1
+    model = Model.load(params, model_path, cuda_device=device)
     model.training = False
     print(model)
     print("Trainable params count: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
