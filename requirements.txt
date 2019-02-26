@@ -3,5 +3,5 @@ torch >= 1.0.0
 nltk >= 3.4
 sentencepiece == 0.1.8
 beautifulsoup4 == 4.4.1
-git+git://github.com/allenai/allennlp@3a5373f#egg=allennlp
+allennlp == 0.8.2
 rouge == 0.3.1

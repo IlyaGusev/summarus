@@ -64,11 +64,11 @@ def main(**kwargs):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model-path', default="models/ria")
+    parser.add_argument('--model-path', default="models/ria_sw_cn_small")
     parser.add_argument('--test-path', default="/input.txt")
     parser.add_argument('--config-path', default=None)
     parser.add_argument('--output-path', default="/output.txt")
-    parser.add_argument('--batch-size', type=int, default=16)
+    parser.add_argument('--batch-size', type=int, default=1024)
 
     args = parser.parse_args()
     main(**vars(args))
