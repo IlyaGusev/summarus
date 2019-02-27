@@ -1,5 +1,4 @@
 import os
-import logging
 import argparse
 
 import torch
@@ -26,7 +25,7 @@ def get_batches(test_path, batch_size):
                 batch = []
         if batch:
             yield batch
-            batch = []
+
 
 def run(model_path, test_path, config_path, output_path, batch_size):
     params_path = config_path or os.path.join(model_path, "config.json")

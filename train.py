@@ -1,6 +1,8 @@
 import os
 import argparse
 
+import numpy
+import torch
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.params import Params
 from allennlp.data.iterators.data_iterator import DataIterator
@@ -11,7 +13,15 @@ from allennlp.models.model import Model
 from summarus import *
 
 
-def train(model_path, train_path, val_path, vocabulary_path=None, config_path=None):
+def set_seed(seed):
+    numpy.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def train(model_path, train_path, val_path, seed, vocabulary_path=None, config_path=None):
+    set_seed(seed)
     params_path = config_path or os.path.join(model_path, "config.json")
     params = Params.from_file(params_path)
 
@@ -41,6 +51,7 @@ if __name__ == "__main__":
     parser.add_argument('--model-path', required=True)
     parser.add_argument('--train-path', required=True)
     parser.add_argument('--val-path', default=None)
+    parser.add_argument('--seed', type=int, default=1048596)
     parser.add_argument('--vocabulary-path', default=None)
     parser.add_argument('--config-path', default=None)
     args = parser.parse_args()

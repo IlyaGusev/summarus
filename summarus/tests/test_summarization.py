@@ -3,13 +3,12 @@ import unittest
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.params import Params
 from allennlp.data.iterators.data_iterator import DataIterator
-from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.training.trainer import Trainer
-from allennlp.predictors.simple_seq2seq import SimpleSeq2SeqPredictor
+from allennlp.predictors.seq2seq import Seq2SeqPredictor
 
 from summarus.seq2seq import Seq2Seq
 from summarus.readers.cnn_dailymail_reader import CNNDailyMailReader
-from summarus.settings import DATA_DIR, TEST_URLS_FILE, TEST_CONFIG, TEST_STORIES_DIR
+from summarus.settings import TEST_URLS_FILE, TEST_CONFIG, TEST_STORIES_DIR
 
 
 class TestSummarizationModel(unittest.TestCase):
@@ -34,7 +33,7 @@ class TestSummarizationModel(unittest.TestCase):
 
     def test_model(self):
         self.model.training = False
-        predictor = SimpleSeq2SeqPredictor(self.model, self.reader)
+        predictor = Seq2SeqPredictor(self.model, self.reader)
         for article, reference_sents in self.reader.parse_set(TEST_URLS_FILE):
             decoded_words = predictor.predict(article)["predicted_tokens"]
             self.assertListEqual(decoded_words, reference_sents.split())

@@ -1,6 +1,5 @@
 from typing import Dict, Tuple
 
-import numpy
 import torch
 import torch.nn.functional as F
 from torch.nn.modules.linear import Linear
@@ -8,18 +7,11 @@ from torch.nn.modules.rnn import LSTMCell
 
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.data.vocabulary import Vocabulary
-from allennlp.modules import Attention, TextFieldEmbedder, Seq2SeqEncoder
+from allennlp.modules import TextFieldEmbedder, Seq2SeqEncoder
 from allennlp.models.model import Model
 from allennlp.modules.token_embedders import Embedding
 from allennlp.nn.beam_search import BeamSearch
 from allennlp.models.encoder_decoders.simple_seq2seq import SimpleSeq2Seq
-
-
-seed = 1048596
-numpy.random.seed(seed)
-torch.manual_seed(seed)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed_all(seed)
 
 
 class CustomAttention(torch.nn.Module):
@@ -54,7 +46,7 @@ class CustomAttention(torch.nn.Module):
         scores = scores.unsqueeze(1)  # B x 1 x l
 
         context = torch.bmm(scores, encoder_outputs)
-        context = context.view(-1, self._hidden_size)
+        context = context.view((-1, self._hidden_size))
 
         scores = scores.view(-1, l)  # B x l
 
@@ -134,7 +126,7 @@ class Seq2Seq(SimpleSeq2Seq):
         decoder_context = state["decoder_context"]
 
         # shape: (group_size, target_embedding_dim)
-        embedded_input = self._target_embedder(last_predictions)
+        embedded_input = self._target_embedder.forward(last_predictions)
 
         if "attn_context" in state:
             context = state["attn_context"]
@@ -150,7 +142,7 @@ class Seq2Seq(SimpleSeq2Seq):
         decoder_state = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim),
                                    decoder_context.view(-1, self._decoder_output_dim)), 1)
 
-        context, attn_scores = self._attention(decoder_state, encoder_outputs, source_mask)
+        context, attn_scores = self._attention.forward(decoder_state, encoder_outputs, source_mask)
         output = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim), context), 1)  # B x hidden_dim
         output_projections = self._output_projection_layer(self._hidden_projection_layer(output))
 

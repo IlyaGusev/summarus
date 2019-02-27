@@ -39,10 +39,10 @@ class TestReaders(unittest.TestCase):
         
         for sample in dataset:
             sample.index_fields(vocabulary)
-            print(sample.fields["source_tokens"])
-            print(sample.fields["target_tokens"])
-            print(sample.fields["metadata"].metadata)
-            print(sample.fields["source_token_ids"].array)
-            print(sample.fields["target_token_ids"].array)
-            print(sample.fields["source_to_target"]._mapping_array)
-            print(sample.fields["source_to_target"]._target_namespace)
+            self.assertIsNotNone(sample.fields["source_tokens"])
+            self.assertIsNotNone(sample.fields["target_tokens"])
+            self.assertIsNotNone(sample.fields["metadata"].metadata)
+            self.assertIsNotNone(sample.fields["source_token_ids"].array)
+            self.assertIsNotNone(sample.fields["target_token_ids"].array)
+            self.assertIsNotNone(sample.fields["source_to_target"]._mapping_array)
+            self.assertIsNotNone(sample.fields["source_to_target"]._target_namespace)

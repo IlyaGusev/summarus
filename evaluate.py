@@ -1,34 +1,27 @@
 import os
-import logging
 import argparse
+from typing import Dict
 
 from allennlp.common.params import Params
 from allennlp.models.model import Model
 from allennlp.predictors.seq2seq import Seq2SeqPredictor
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
+import torch
 from rouge import Rouge
 
 from summarus import *
 
 
-def make_html_safe(s):
-    s.replace("<", "&lt;")
-    s.replace(">", "&gt;")
-    return s
-
-
-def get_batches(reader, test_path, batch_size):
-    with open(test_path, "r", encoding="utf-8") as f:
-        batch = []
-        for source, target in reader.parse_set(test_path):
-            source = source.strip().lower()
-            batch.append({"source": source, "target": target})
-            if len(batch) == batch_size:
-                yield batch
-                batch = []
-        if batch:
+def get_batches(reader: SummarizationReader, test_path: str, batch_size: int) -> Dict:
+    batch = []
+    for source, target in reader.parse_set(test_path):
+        source = source.strip().lower()
+        batch.append({"source": source, "target": target})
+        if len(batch) == batch_size:
             yield batch
             batch = []
+    if batch:
+        yield batch
 
 
 def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_count, report_every, batch_size):
@@ -52,7 +45,10 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
         targets = [b.get('target') for b in batch]
         for output, target in zip(outputs, targets):
             decoded_words = output["predicted_tokens"]
-            if is_multiple_ref:
+            if not is_multiple_ref:
+                hyp = " ".join(decoded_words) if not is_subwords else "".join(decoded_words).replace("▁", " ")
+                ref = [target]
+            else:
                 if isinstance(target, list):
                     reference_sents = target
                 elif isinstance(target, str):
@@ -68,14 +64,9 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
                     sent = decoded_words[:fst_period_idx + 1]
                     decoded_words = decoded_words[fst_period_idx + 1:]
                     decoded_sents.append(' '.join(sent))
-                hyp = [make_html_safe(w) for w in decoded_sents]
-                ref = [make_html_safe(w) for w in reference_sents]
-            else:
-                if not is_subwords:
-                    hyp = " ".join(decoded_words)
-                else:
-                    hyp = "".join(decoded_words).replace("▁", " ")
-                ref = [target]
+
+                hyp = [w.replace("<", "&lt;").replace(">", "&gt;") for w in decoded_sents]
+                ref = [w.replace("<", "&lt;").replace(">", "&gt;") for w in reference_sents]
 
             hyps.append(hyp)
             refs.append(ref)
