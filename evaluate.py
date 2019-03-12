@@ -72,14 +72,14 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
                 print("Ref: ", ref)
                 print("Hyp: ", hyp)
 
-            if metric in ("bleu", "all"):
-                from nltk.translate.bleu_score import corpus_bleu
-                print("BLEU: ", corpus_bleu(refs, hyps))
+                if metric in ("bleu", "all"):
+                    from nltk.translate.bleu_score import corpus_bleu
+                    print("BLEU: ", corpus_bleu(refs, hyps))
 
-            if metric in ("rouge", "all"):
-                rouge = Rouge()
-                scores = rouge.get_scores(hyps, [r[0] for r in refs], avg=True)
-                print("ROUGE: ", scores)
+                if metric in ("rouge", "all"):
+                    rouge = Rouge()
+                    scores = rouge.get_scores(hyps, [r[0] for r in refs], avg=True)
+                    print("ROUGE: ", scores)
 
             if max_count and len(hyps) >= max_count:
                 break
