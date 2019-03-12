@@ -47,6 +47,9 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
             decoded_words = output["predicted_tokens"]
             if not is_multiple_ref:
                 hyp = " ".join(decoded_words) if not is_subwords else "".join(decoded_words).replace("▁", " ")
+                if not hyp:
+                    hyp = "a"
+                    print("Empty hyp")
                 ref = [target]
             else:
                 if isinstance(target, list):
@@ -55,18 +58,11 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
                     reference_sents = target.split(" s_s ")
                 else:
                     assert False
-                decoded_sents = []
-                while len(decoded_words) > 0:
-                    try:
-                        fst_period_idx = decoded_words.index(".")
-                    except ValueError:
-                        fst_period_idx = len(decoded_words)
-                    sent = decoded_words[:fst_period_idx + 1]
-                    decoded_words = decoded_words[fst_period_idx + 1:]
-                    decoded_sents.append(' '.join(sent))
-
-                hyp = [w.replace("<", "&lt;").replace(">", "&gt;") for w in decoded_sents]
-                ref = [w.replace("<", "&lt;").replace(">", "&gt;") for w in reference_sents]
+                decoded_sents = (" ".join(decoded_words)).split("s_s")
+                hyp = [w.replace("<", "&lt;").replace(">", "&gt;").strip() for w in decoded_sents]
+                ref = [w.replace("<", "&lt;").replace(">", "&gt;").strip() for w in reference_sents]
+                hyp = " ".join(hyp)
+                ref = [" ".join(ref)]
 
             hyps.append(hyp)
             refs.append(ref)
@@ -76,14 +72,14 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
                 print("Ref: ", ref)
                 print("Hyp: ", hyp)
 
-                if metric == "bleu":
-                    from nltk.translate.bleu_score import corpus_bleu
-                    print("BLEU: ", corpus_bleu(refs, hyps))
+            if metric in ("bleu", "all"):
+                from nltk.translate.bleu_score import corpus_bleu
+                print("BLEU: ", corpus_bleu(refs, hyps))
 
-                if metric == "rouge":
-                    rouge = Rouge()
-                    scores = rouge.get_scores(hyps, [r[0] for r in refs], avg=True)
-                    print("ROUGE: ", scores)
+            if metric in ("rouge", "all"):
+                rouge = Rouge()
+                scores = rouge.get_scores(hyps, [r[0] for r in refs], avg=True)
+                print("ROUGE: ", scores)
 
             if max_count and len(hyps) >= max_count:
                 break
@@ -99,11 +95,11 @@ if __name__ == "__main__":
     parser.add_argument('--model-path', required=True)
     parser.add_argument('--test-path', required=True)
     parser.add_argument('--config-path', default=None)
-    parser.add_argument('--metric', choices=("rouge", "bleu"))
+    parser.add_argument('--metric', choices=("rouge", "bleu", "all"))
     parser.add_argument('--is-multiple-ref', dest='is_multiple_ref', action='store_true')
     parser.add_argument('--max-count', type=int, default=None)
     parser.add_argument('--report-every', type=int, default=100)
-    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--batch-size', type=int, default=32)
     parser.set_defaults(is_multiple_ref=False)
 
     args = parser.parse_args()
