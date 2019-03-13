@@ -21,10 +21,6 @@ wget https://www.dropbox.com/s/2powhpdjo8zmny8/ria_25kk_words_seq2seq.tar.gz
 tar -xzvf ria_25kk_words_seq2seq.tar.gz --one-top-level=models/ria_25kk_words_seq2seq
 rm ria_25kk_words_seq2seq.tar.gz
 
-wget https://www.dropbox.com/s/667gsltvcdopzsq/ria_27kk_subwords_copynet_encoder_transformer.tar.gz
-tar -xzvf ria_27kk_subwords_copynet_encoder_transformer.tar.gz --one-top-level=models/ria_27kk_subwords_copynet_encoder_transformer
-rm ria_27kk_subwords_copynet_encoder_transformer.tar.gz
-
 wget https://www.dropbox.com/s/w67dcqf1mlv66uy/ria_43kk_subwords_copynet_short_context.tar.gz
 tar -xzvf ria_43kk_subwords_copynet_short_context.tar.gz --one-top-level=models/ria_43kk_subwords_copynet_short_context
 rm ria_43kk_subwords_copynet_short_context.tar.gz

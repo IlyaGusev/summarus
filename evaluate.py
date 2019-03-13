@@ -1,5 +1,6 @@
 import os
 import argparse
+import re
 from typing import Dict
 
 from allennlp.common.params import Params
@@ -10,6 +11,21 @@ import torch
 from rouge import Rouge
 
 from summarus import *
+
+
+def detokenize(text):
+    punctuation = ",.!?:;%"
+    closing_punctuation = ")]}"
+    opening_punctuation = "([}"
+    for ch in punctuation + closing_punctuation:
+        text = text.replace(" " + ch, ch)
+    for ch in opening_punctuation:
+        text = text.replace(ch + " ", ch)
+    res = [r'"\s[^\s]+\s"', r"'\s[^\s]+\s'"]
+    for r in res:
+        for f in re.findall(r, text, re.U):
+            text = text.replace(f, f[0] + f[2:-2] + f[-1])
+    return text
 
 
 def get_batches(reader: SummarizationReader, test_path: str, batch_size: int) -> Dict:
@@ -46,7 +62,7 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
         for output, target in zip(outputs, targets):
             decoded_words = output["predicted_tokens"]
             if not is_multiple_ref:
-                hyp = " ".join(decoded_words) if not is_subwords else "".join(decoded_words).replace("▁", " ")
+                hyp = detokenize(" ".join(decoded_words)) if not is_subwords else "".join(decoded_words).replace("▁", " ")
                 if not hyp:
                     hyp = "a"
                     print("Empty hyp")

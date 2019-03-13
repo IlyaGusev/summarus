@@ -10,6 +10,7 @@ from allennlp.data.token_indexers import SingleIdTokenIndexer
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.data.tokenizers import Token
 from allennlp.data.fields import TextField, ArrayField, MetadataField, NamespaceSwappingField
+from allennlp.data.tokenizers.word_splitter import SimpleWordSplitter
 
 from summarus.subword_tokenizer import SubwordTokenizer
 
@@ -29,7 +30,7 @@ class SummarizationReader(DatasetReader):
         self._source_max_tokens = source_max_tokens
         self._target_max_tokens = target_max_tokens
 
-        self._tokenizer = tokenizer or WordTokenizer()
+        self._tokenizer = tokenizer or WordTokenizer(word_splitter=SimpleWordSplitter())
 
         tokens_indexer = {"tokens": SingleIdTokenIndexer()}
         self._source_token_indexers = source_token_indexers or tokens_indexer
