@@ -111,7 +111,7 @@ if __name__ == "__main__":
     parser.add_argument('--model-path', required=True)
     parser.add_argument('--test-path', required=True)
     parser.add_argument('--config-path', default=None)
-    parser.add_argument('--metric', choices=("rouge", "bleu", "all"))
+    parser.add_argument('--metric', choices=("rouge", "bleu", "all"), default="all")
     parser.add_argument('--is-multiple-ref', dest='is_multiple_ref', action='store_true')
     parser.add_argument('--max-count', type=int, default=None)
     parser.add_argument('--report-every', type=int, default=100)

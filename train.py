@@ -21,12 +21,15 @@ def set_seed(seed):
 
 
 def train(model_path, train_path, val_path, seed, vocabulary_path=None, config_path=None):
+    assert os.path.isdir(model_path), "Model directory does not exist"
     set_seed(seed)
-    params_path = config_path or os.path.join(model_path, "config.json")
-    params = Params.from_file(params_path)
+
+    config_path = config_path or os.path.join(model_path, "config.json")
+    assert os.path.isfile(config_path), "Config file does not exist"
+    params = Params.from_file(config_path)
 
     vocabulary_path = vocabulary_path or os.path.join(model_path, "vocabulary")
-    assert os.path.exists(vocabulary_path), "Vocabulary is not ready, run preprocess.py first"
+    assert os.path.exists(vocabulary_path), "Vocabulary is not ready, do not forget to run preprocess.py first"
     vocabulary = Vocabulary.from_files(vocabulary_path)
 
     reader_params = params.duplicate().pop("reader", default=Params({}))
@@ -47,8 +50,8 @@ def train(model_path, train_path, val_path, seed, vocabulary_path=None, config_p
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model-path', required=True)
+    parser = argparse.ArgumentParser(description="Script for model training")
+    parser.add_argument('--model-path', required=True, help="path to directory with model's files")
     parser.add_argument('--train-path', required=True)
     parser.add_argument('--val-path', default=None)
     parser.add_argument('--seed', type=int, default=1048596)
