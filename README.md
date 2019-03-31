@@ -2,7 +2,7 @@
 
 Summarization models
 
-## Install 
+## Prerequisites
 ```
 pip install -r requirements.txt
 ```
@@ -54,15 +54,15 @@ pip install -r requirements.txt
 
 ### Commands
 
-### preprocess.py
+#### preprocess.py
 
 Script for generation of a vocabulary.
 Uses a configuration file to determine the size of the vocabulary and options of dataset preprocessing.
 
 Required arguments:
-* --train-path <path to train dataset>
-* --config-path <path to file with configuration>
-* --vocabulary-path <path to directory where vocabulary will be saved>
+| --train-path      | path to train dataset                           |
+| --config-path     | path to file with configuration                 |
+| --vocabulary-path |path to directory where vocabulary will be saved |
 
 #### train_subword_model.py
 
