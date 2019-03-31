@@ -59,49 +59,48 @@ pip install -r requirements.txt
 Script for generation of a vocabulary.
 Uses a configuration file to determine the size of the vocabulary and options of dataset preprocessing.
 
-Required arguments:
-| --train-path      | path to train dataset                           |
-| --config-path     | path to file with configuration                 |
-| --vocabulary-path |path to directory where vocabulary will be saved |
+| Argument          | Default | Description                                      |
+|:------------------|:--------|:-------------------------------------------------|
+| --train-path      |         | path to train dataset                            |
+| --config-path     |         | path to file with configuration                  |
+| --vocabulary-path |         | path to directory where vocabulary will be saved |
 
 #### train_subword_model.py
 
 Script for subword model training.
 
-Required arguments:
-* --train-path <path to train dataset>
-* --model-path <path to directory where generated subword model will be saved>
-
-Optional arguments:
-* --model-type <type of subword model, default=bpe, see sentencepiece>
-* --vocab-size <size of the resulting subword model vocabulary>
+| Argument          | Default | Description                                                   |
+|:------------------|:--------|:--------------------------------------------------------------|
+| --train-path      |         | path to train dataset                                         |
+| --model-path      |         | path to directory where generated subword model will be saved |
+| --model-type      | bpe     | type of subword model, see sentencepiece                      |
+| --vocab-size      | 50000   | size of the resulting subword model vocabulary                |
 
 #### train.py
 
 Script for model training. Model directory should exist as well as config file and vocabulary directory.
 You should use preprocess.py to generate a vocabulary based on the train dataset.
 
-Required arguments:
-* --model-path <path to directory with model's files>
-* --train-path <path to train dataset>
-
-Optional arguments:
-* --val-path <path to val dataset>
-* --seed <random seed, default=1048596>
-* --vocabulary-path <custom path to vocabulary>
-* --config-path <custom path to config>
+| Argument          | Default | Description                          |
+|:------------------|:--------|:-------------------------------------|
+| --train-path      |         | path to train dataset                |
+| --model-path      |         | path to directory with model's files |
+| --val-path        | None    | path to val dataset                  |
+| --seed            | 1048596 | random seed                          |
+| --vocabulary-path | None    | custom path to vocabulary            |
+| --config-path     | None    | custom path to config                |
 
 #### evaluate.py
 
 Script for model evaluation. The test dataset should have the same format as the train dataset.
 
-Required arguments:
-* --model-path <path to directory with model's files>
-* --test-path <path to test dataset>
 
-Optional arguments:
-* --config-path <custom path to config>
-* --metric <what metric to evaluate, choices=("rouge", "bleu", "all")>
-* --max-count <how many test examples to consider>
-* --report-every <print metrics every N'th step>
-* --batch-size <size of a batch with test examples to run simultaneously>
+| Argument          | Default | Description                                               |
+|:------------------|:--------|:----------------------------------------------------------|
+| --test-path       |         | path to test dataset                                      |
+| --model-path      |         | path to directory with model's files                      |
+| --metric          | all     | what metric to evaluate, choices=("rouge", "bleu", "all") |
+| --max-count       | None    | how many test examples to consider                        |
+| --report-every    | None    | print metrics every N'th step                             |
+| --config-path     | None    | custom path to config                                     |
+| --batch_size      | 32      | size of a batch with test examples to run simultaneously  |
