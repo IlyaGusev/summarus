@@ -85,10 +85,6 @@ class SummarizationReader(DatasetReader):
         if target:
             target_tokens = prepare_text(target, self._target_max_tokens)
             target_tokens_indexed = TextField(target_tokens, self._target_token_indexers)
-            print("source")
-            print(source_tokens_indexed)
-            print("target")
-            print(target_tokens_indexed)
             result['target_tokens'] = target_tokens_indexed
 
             if self._save_pgn_fields:
