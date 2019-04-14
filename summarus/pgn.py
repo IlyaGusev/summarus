@@ -169,6 +169,11 @@ class PointerGeneratorNetwork(Model):
         last_predictions_fixed = last_predictions - last_predictions * is_unk + self._target_unk_index * is_unk
         embedded_input = self._target_embedder.forward(last_predictions_fixed)
 
+        if torch.isinf(encoder_outputs).sum() != 0:
+            raise ValueError("Encoder outputs have inf")
+        if torch.isnan(encoder_outputs).sum() != 0:
+            raise ValueError("Encoder outputs have nan")
+
         attn_scores = self._attention.forward(decoder_hidden, encoder_outputs, source_mask)
         attn_context = util.weighted_sum(encoder_outputs, attn_scores)
         decoder_input = torch.cat((attn_context, embedded_input), -1)
@@ -227,10 +232,21 @@ class PointerGeneratorNetwork(Model):
         p_gen = torch.sigmoid(p_gen)
 
         vocab_dist = F.softmax(output_projections, dim=-1)
+
+        if torch.isinf(vocab_dist).sum() != 0:
+            raise ValueError("Vocab distribution has inf")
+        if torch.isnan(vocab_dist).sum() != 0:
+            raise ValueError("Vocab distribution has nan")
+
         vocab_dist = vocab_dist * p_gen
         attn_dist = attn_scores * (1 - p_gen)
         vocab_dist = torch.cat((vocab_dist, extra_zeros), 1)
         final_dist = vocab_dist.scatter_add(1, tokens, attn_dist)
+
+        if torch.isinf(final_dist).sum() != 0:
+            raise ValueError("Final distribution has inf")
+        if torch.isnan(final_dist).sum() != 0:
+            raise ValueError("Final distribution has nan")
 
         return final_dist
 
@@ -276,13 +292,7 @@ class PointerGeneratorNetwork(Model):
             # shape: (batch_size, num_classes)
             output_projections, state = self._prepare_output_projections(input_choices, state)
             final_dist = self._get_final_dist(state, output_projections)
-            if torch.isinf(final_dist).sum() != 0 or torch.isnan(final_dist).sum() != 0:
-                raise ValueError("bad final dist")
-            # final_dist = F.softmax(output_projections, dim=1)
             step_proba.append(final_dist)
-
-            # list of tensors, shape: (batch_size, 1, num_classes)
-            # step_logits.append(output_projections.unsqueeze(1))
 
             # shape (predicted_classes): (batch_size,)
             _, predicted_classes = torch.max(final_dist, 1)
@@ -340,12 +350,11 @@ class PointerGeneratorNetwork(Model):
                 if x < self.vocab.get_vocab_size():
                     token = self.vocab.get_token_from_index(x, namespace=self._target_namespace)
                 else:
-                    unk_number = x - self.vocab.get_vocab_size()
-                    vocab_unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN)
+                    unk_number = x - self._source_vocab_size
                     unk_index = 0
                     result = 0
                     for i, t in enumerate(source_tokens):
-                        if t == vocab_unk_index:
+                        if t == self._source_unk_index:
                             if unk_index == unk_number:
                                 result = i
                                 break
