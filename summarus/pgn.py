@@ -13,69 +13,53 @@ from allennlp.models.model import Model
 from allennlp.modules.token_embedders import Embedding
 from allennlp.modules import Attention
 from allennlp.nn.beam_search import BeamSearch
-from allennlp.models.encoder_decoders.simple_seq2seq import SimpleSeq2Seq
 from allennlp.nn import util
 
 
 @Model.register("pgn")
-class PGN(SimpleSeq2Seq):
+class PointerGeneratorNetwork(Model):
     def __init__(self,
                  vocab: Vocabulary,
                  source_embedder: TextFieldEmbedder,
                  encoder: Seq2SeqEncoder,
                  max_decoding_steps: int,
-                 attention: Attention = None,
+                 attention: Attention,
                  beam_size: int = None,
                  target_namespace: str = "tokens",
                  target_embedding_dim: int = None,
-                 projection_dim: int = None,
-                 tie_embeddings: bool = False) -> None:
-        super(SimpleSeq2Seq, self).__init__(vocab)
-        self._target_namespace = target_namespace
-        self._tie_embeddings = tie_embeddings
-        self._scheduled_sampling_ratio = 0.
+                 scheduled_sampling_ratio: float = 0.) -> None:
+        super(PointerGeneratorNetwork, self).__init__(vocab)
 
+        self._target_namespace = target_namespace
         self._start_index = self.vocab.get_token_index(START_SYMBOL, self._target_namespace)
         self._end_index = self.vocab.get_token_index(END_SYMBOL, self._target_namespace)
-
-        # Source embedder
-        self._source_embedder = source_embedder
+        self._source_unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN)
+        self._target_unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN, self._target_namespace)
+        self._source_vocab_size = self.vocab.get_vocab_size()
+        self._target_vocab_size = self.vocab.get_vocab_size(self._target_namespace)
 
         # Encoder
+        self._source_embedder = source_embedder
         self._encoder = encoder
         self._encoder_output_dim = self._encoder.get_output_dim()
-        self._decoder_output_dim = self._encoder_output_dim
-        self.reduce_h = Linear(self._encoder_output_dim, self._decoder_output_dim)
-        self.reduce_c = Linear(self._encoder_output_dim, self._decoder_output_dim)
-
-        # Target embedder
-        num_classes = self.vocab.get_vocab_size(self._target_namespace)
-        target_embedding_dim = target_embedding_dim or source_embedder.get_output_dim()
-        self._target_embedder = Embedding(num_classes, target_embedding_dim)
 
         # Decoder
-        self._decoder_input_dim = target_embedding_dim
-        self._decoder_input_projection = Linear(self._decoder_output_dim + target_embedding_dim,
-                                                self._decoder_input_dim)
-        self._decoder_cell = LSTMCell(self._decoder_input_dim, self._decoder_output_dim)
-
-        # Attention
         self._attention = attention
-
-        # Prediction
-        self._projection_dim = projection_dim or self._source_embedder.get_output_dim()
-        self._hidden_projection_layer = Linear(self._decoder_output_dim * 2, self._projection_dim)
-        self._output_projection_layer = Linear(self._projection_dim, num_classes)
-
-        # Misc
-        self._max_decoding_steps = max_decoding_steps
-        self._beam_search = BeamSearch(self._end_index, max_steps=max_decoding_steps, beam_size=beam_size) if beam_size else None
-
-        self._bleu = False
-
+        self._target_embedding_dim = target_embedding_dim or source_embedder.get_output_dim()
+        self._num_classes = self.vocab.get_vocab_size(self._target_namespace)
+        self._target_embedder = Embedding(self._num_classes, self._target_embedding_dim)
+        self._decoder_input_dim = self._encoder_output_dim + self._target_embedding_dim
+        self._decoder_output_dim = self._encoder_output_dim
+        self._decoder_cell = LSTMCell(self._decoder_input_dim, self._decoder_output_dim)
+        self._output_projection_layer = Linear(self._decoder_output_dim, self._num_classes)
         self._p_gen_layer = Linear(self._decoder_output_dim * 3 + self._decoder_input_dim, 1)
 
-    def forward(self,  # type: ignore
+        # Decoding
+        self._scheduled_sampling_ratio = scheduled_sampling_ratio
+        self._max_decoding_steps = max_decoding_steps
+        self._beam_search = BeamSearch(self._end_index, max_steps=max_decoding_steps, beam_size=beam_size or 1)
+
+    def forward(self,
                 source_tokens: Dict[str, torch.LongTensor],
                 source_token_ids: torch.Tensor,
                 target_tokens: Dict[str, torch.LongTensor] = None,
@@ -84,19 +68,18 @@ class PGN(SimpleSeq2Seq):
                 metadata=None) -> Dict[str, torch.Tensor]:
         state = self._encode(source_tokens)
 
-        extra_zeros, tokens, modified_target_tokens = self._pgn_prepare(source_tokens, source_token_ids,
-                                                                        target_tokens, target_token_ids)
+        target_tokens_tensor = target_tokens["tokens"].long() if target_tokens else None
+        extra_zeros, modified_source_tokens, modified_target_tokens = self._prepare(
+            source_tokens["tokens"].long(), source_token_ids, target_tokens_tensor, target_token_ids)
 
-        state["tokens"] = tokens
+        state["tokens"] = modified_source_tokens
         state["extra_zeros"] = extra_zeros
 
+        output_dict = {}
         if target_tokens:
             state["target_tokens"] = modified_target_tokens
             state = self._init_decoder_state(state)
             output_dict = self._forward_loop(state, target_tokens)
-        else:
-            output_dict = {}
-
         output_dict["metadata"] = metadata
         output_dict["source_tokens"] = source_tokens["tokens"]
 
@@ -107,44 +90,68 @@ class PGN(SimpleSeq2Seq):
 
         return output_dict
 
-    def _pgn_prepare(self,
-                     source_tokens: Dict[str, torch.LongTensor],
-                     source_token_ids: torch.Tensor,
-                     target_tokens: Dict[str, torch.LongTensor] = None,
-                     target_token_ids: torch.Tensor = None):
-        tokens = source_tokens["tokens"].long()
+    def _prepare(self,
+                 source_tokens: torch.LongTensor,
+                 source_token_ids: torch.Tensor,
+                 target_tokens: torch.LongTensor = None,
+                 target_token_ids: torch.Tensor = None):
+        batch_size = source_tokens.size(0)
+        source_max_length = source_tokens.size(1)
+
+        tokens = source_tokens
         token_ids = source_token_ids.long()
-        batch_size = tokens.size(0)
-        source_max_length = tokens.size(1)
-        if target_tokens:
-            tokens = torch.cat((tokens, target_tokens["tokens"]), 1)
+        if target_tokens is not None:
+            tokens = torch.cat((tokens, target_tokens), 1)
             token_ids = torch.cat((token_ids, target_token_ids.long()), 1)
 
-        vocab_unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN)
-        is_unk_token = torch.eq(tokens, vocab_unk_index).long()
-        tokens = tokens - tokens * is_unk_token + (self.vocab.get_vocab_size() - 1) * is_unk_token
-        unk_token_nums = token_ids.new_zeros((token_ids.size(0), token_ids.size(1)))
+        is_unk_token = torch.eq(tokens, self._source_unk_index).long()
+        tokens = tokens - tokens * is_unk_token + (self._source_vocab_size - 1) * is_unk_token
+        unk_token_nums = token_ids.new_zeros((batch_size, token_ids.size(1)))
         unk_only = token_ids * is_unk_token
         for i in range(batch_size):
-            unique = torch.unique(unk_only[i, :],
-                                  return_inverse=True, sorted=True)[1]
+            unique = torch.unique(unk_only[i, :], return_inverse=True, sorted=True)[1]
             unk_token_nums[i, :] = unique
         tokens += unk_token_nums
 
         modified_target_tokens = None
-        if target_tokens:
+        modified_source_tokens = tokens
+        if target_tokens is not None:
             for i in range(batch_size):
                 max_source_num = self.vocab.get_vocab_size() - 1 + torch.max(unk_token_nums[i, :source_max_length])
                 unk_target_tokens_mask = torch.gt(tokens[i, :], max_source_num).long()
-
-                tokens[i, :] += -tokens[i, :] * unk_target_tokens_mask + vocab_unk_index * unk_target_tokens_mask
+                zero_target_unk = tokens[i, :] - tokens[i, :] * unk_target_tokens_mask
+                tokens[i, :] = zero_target_unk + self._target_unk_index * unk_target_tokens_mask
             modified_target_tokens = tokens[:, source_max_length:]
             modified_source_tokens = tokens[:, :source_max_length]
-        else:
-            modified_source_tokens = tokens
 
-        extra_zeros = unk_token_nums.new_zeros((unk_token_nums.size(0), torch.max(unk_token_nums[:, :source_max_length]))).float()
+        source_unk_count = torch.max(unk_token_nums[:, :source_max_length])
+        extra_zeros = unk_token_nums.new_zeros((batch_size, source_unk_count)).float()
         return extra_zeros, modified_source_tokens, modified_target_tokens
+
+    def _encode(self, source_tokens: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        # shape: (batch_size, max_input_sequence_length, encoder_input_dim)
+        embedded_input = self._source_embedder.forward(source_tokens)
+        # shape: (batch_size, max_input_sequence_length)
+        source_mask = util.get_text_field_mask(source_tokens)
+        # shape: (batch_size, max_input_sequence_length, encoder_output_dim)
+        encoder_outputs = self._encoder.forward(embedded_input, source_mask)
+        return {
+                "source_mask": source_mask,
+                "encoder_outputs": encoder_outputs,
+        }
+
+    def _init_decoder_state(self, state: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        batch_size = state["source_mask"].size(0)
+        # shape: (batch_size, encoder_output_dim)
+        final_encoder_output = util.get_final_encoder_states(
+                state["encoder_outputs"],
+                state["source_mask"],
+                self._encoder.is_bidirectional())
+        # Initialize the decoder hidden state with the final output of the encoder.
+        # shape: (batch_size, decoder_output_dim)
+        state["decoder_hidden"] = final_encoder_output
+        state["decoder_context"] = state["encoder_outputs"].new_zeros(batch_size, self._decoder_output_dim)
+        return state
 
     def _prepare_output_projections(self,
                                     last_predictions: torch.Tensor,
@@ -153,36 +160,30 @@ class PGN(SimpleSeq2Seq):
         encoder_outputs = state["encoder_outputs"]
         # shape: (group_size, max_input_sequence_length)
         source_mask = state["source_mask"]
-        batch_size = source_mask.size()[0]
         # shape: (group_size, decoder_output_dim)
         decoder_hidden = state["decoder_hidden"]
         # shape: (group_size, decoder_output_dim)
         decoder_context = state["decoder_context"]
 
-        # shape: (group_size, target_embedding_dim)
         is_unk = (last_predictions >= self.vocab.get_vocab_size(self._target_namespace)).long()
-        vocab_unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN)
-        last_predictions_fixed = last_predictions + vocab_unk_index * is_unk - last_predictions*is_unk
+        last_predictions_fixed = last_predictions - last_predictions * is_unk + self._target_unk_index * is_unk
         embedded_input = self._target_embedder.forward(last_predictions_fixed)
 
-        if "attn_context" in state:
-            context = state["attn_context"]
-        else:
-            context = decoder_context.new_zeros(batch_size, self._decoder_output_dim)
-
-        decoder_input = self._decoder_input_projection(torch.cat((context, embedded_input), 1))
-        decoder_hidden, decoder_context = self._decoder_cell(decoder_input, (decoder_hidden, decoder_context))
-
         attn_scores = self._attention.forward(decoder_hidden, encoder_outputs, source_mask)
-        context = util.weighted_sum(encoder_outputs, attn_scores)
-        output = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim), context), 1)  # B x hidden_dim
-        output_projections = self._output_projection_layer(self._hidden_projection_layer(output))
+        attn_context = util.weighted_sum(encoder_outputs, attn_scores)
+        decoder_input = torch.cat((attn_context, embedded_input), -1)
+
+        decoder_hidden, decoder_context = self._decoder_cell(
+            decoder_input,
+            (decoder_hidden, decoder_context))
 
         state["decoder_input"] = decoder_input
         state["decoder_hidden"] = decoder_hidden
         state["decoder_context"] = decoder_context
-        state["attn_context"] = context
         state["attn_scores"] = attn_scores
+        state["attn_context"] = attn_context
+
+        output_projections = self._output_projection_layer(decoder_hidden)
 
         return output_projections, state
 
@@ -215,12 +216,16 @@ class PGN(SimpleSeq2Seq):
         attn_scores = state["attn_scores"]
         tokens = state["tokens"]
         extra_zeros = state["extra_zeros"]
+        attn_context = state["attn_context"]
+        decoder_input = state["decoder_input"]
+        decoder_hidden = state["decoder_hidden"]
+        decoder_context = state["decoder_context"]
 
-        # shape: (group_size, num_classes)
-        decoder_state = torch.cat((state["decoder_hidden"].view(-1, self._decoder_output_dim),
-                                   state["decoder_context"].view(-1, self._decoder_output_dim)), 1)
-        p_gen = self._p_gen_layer(torch.cat((state["attn_context"], decoder_state, state["decoder_input"]), 1))
+        decoder_state = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim),
+                                   decoder_context.view(-1, self._decoder_output_dim)), 1)
+        p_gen = self._p_gen_layer(torch.cat((attn_context, decoder_state, decoder_input), 1))
         p_gen = torch.sigmoid(p_gen)
+
         vocab_dist = F.softmax(output_projections, dim=-1)
         vocab_dist = vocab_dist * p_gen
         attn_dist = attn_scores * (1 - p_gen)
