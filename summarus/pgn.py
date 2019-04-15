@@ -15,6 +15,8 @@ from allennlp.modules import Attention
 from allennlp.nn.beam_search import BeamSearch
 from allennlp.nn import util
 
+from summarus.seq2seq import CustomAttention
+
 
 @Model.register("pgn")
 class PointerGeneratorNetwork(Model):
@@ -23,7 +25,6 @@ class PointerGeneratorNetwork(Model):
                  source_embedder: TextFieldEmbedder,
                  encoder: Seq2SeqEncoder,
                  max_decoding_steps: int,
-                 attention: Attention,
                  beam_size: int = None,
                  target_namespace: str = "tokens",
                  target_embedding_dim: int = None,
@@ -44,7 +45,6 @@ class PointerGeneratorNetwork(Model):
         self._encoder_output_dim = self._encoder.get_output_dim()
 
         # Decoder
-        self._attention = attention
         self._target_embedding_dim = target_embedding_dim or source_embedder.get_output_dim()
         self._num_classes = self.vocab.get_vocab_size(self._target_namespace)
         self._target_embedder = Embedding(self._num_classes, self._target_embedding_dim)
@@ -53,6 +53,7 @@ class PointerGeneratorNetwork(Model):
         self._decoder_cell = LSTMCell(self._decoder_input_dim, self._decoder_output_dim)
         self._output_projection_layer = Linear(self._decoder_output_dim, self._num_classes)
         self._p_gen_layer = Linear(self._decoder_output_dim * 3 + self._decoder_input_dim, 1)
+        self._attention = CustomAttention(self._decoder_output_dim)
 
         # Decoding
         self._scheduled_sampling_ratio = scheduled_sampling_ratio
@@ -67,7 +68,6 @@ class PointerGeneratorNetwork(Model):
                 source_to_target=None,
                 metadata=None) -> Dict[str, torch.Tensor]:
         state = self._encode(source_tokens)
-
         target_tokens_tensor = target_tokens["tokens"].long() if target_tokens else None
         extra_zeros, modified_source_tokens, modified_target_tokens = self._prepare(
             source_tokens["tokens"].long(), source_token_ids, target_tokens_tensor, target_token_ids)
@@ -165,17 +165,13 @@ class PointerGeneratorNetwork(Model):
         # shape: (group_size, decoder_output_dim)
         decoder_context = state["decoder_context"]
 
-        is_unk = (last_predictions >= self.vocab.get_vocab_size(self._target_namespace)).long()
+        is_unk = (last_predictions >= self._target_vocab_size).long()
         last_predictions_fixed = last_predictions - last_predictions * is_unk + self._target_unk_index * is_unk
         embedded_input = self._target_embedder.forward(last_predictions_fixed)
 
-        if torch.isinf(encoder_outputs).sum() != 0:
-            raise ValueError("Encoder outputs have inf")
-        if torch.isnan(encoder_outputs).sum() != 0:
-            raise ValueError("Encoder outputs have nan")
-
-        attn_scores = self._attention.forward(decoder_hidden, encoder_outputs, source_mask)
-        attn_context = util.weighted_sum(encoder_outputs, attn_scores)
+        decoder_state = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim),
+                                   decoder_context.view(-1, self._decoder_output_dim)), 1)
+        attn_context, attn_scores = self._attention.forward(decoder_state, encoder_outputs, source_mask)
         decoder_input = torch.cat((attn_context, embedded_input), -1)
 
         decoder_hidden, decoder_context = self._decoder_cell(
@@ -218,7 +214,7 @@ class PointerGeneratorNetwork(Model):
         return torch.log(final_dist), state
 
     def _get_final_dist(self, state: Dict[str, torch.Tensor], output_projections):
-        attn_scores = state["attn_scores"]
+        attn_dist = state["attn_scores"]
         tokens = state["tokens"]
         extra_zeros = state["extra_zeros"]
         attn_context = state["attn_context"]
@@ -233,13 +229,8 @@ class PointerGeneratorNetwork(Model):
 
         vocab_dist = F.softmax(output_projections, dim=-1)
 
-        if torch.isinf(vocab_dist).sum() != 0:
-            raise ValueError("Vocab distribution has inf")
-        if torch.isnan(vocab_dist).sum() != 0:
-            raise ValueError("Vocab distribution has nan")
-
         vocab_dist = vocab_dist * p_gen
-        attn_dist = attn_scores * (1 - p_gen)
+        attn_dist = attn_dist * (1 - p_gen)
         vocab_dist = torch.cat((vocab_dist, extra_zeros), 1)
         final_dist = vocab_dist.scatter_add(1, tokens, attn_dist)
 
@@ -316,7 +307,6 @@ class PointerGeneratorNetwork(Model):
             # Compute loss.
             target_mask = util.get_text_field_mask(target_tokens)
             target_tokens = state["target_tokens"]
-            # target_tokens = target_tokens["tokens"]
             loss = self._get_loss(proba, target_tokens, target_mask)
             output_dict["loss"] = loss
 
