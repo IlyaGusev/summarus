@@ -138,11 +138,6 @@ class PointerGeneratorNetwork(Model):
         # shape: (batch_size, max_input_sequence_length, encoder_output_dim)
         encoder_outputs = self._encoder.forward(embedded_input, source_mask)
 
-        if torch.isinf(encoder_outputs).sum() != 0:
-            raise ValueError("Encoder outputs has inf")
-        if torch.isnan(encoder_outputs).sum() != 0:
-            raise ValueError("Encoder outputs has nan")
-
         return {
                 "source_mask": source_mask,
                 "encoder_outputs": encoder_outputs,
@@ -220,11 +215,6 @@ class PointerGeneratorNetwork(Model):
         normalization_factor = final_dist.sum(1, keepdim=True)
         final_dist = final_dist / normalization_factor
 
-        if torch.isinf(final_dist).sum() != 0:
-            raise ValueError("Final distribution has inf")
-        if torch.isnan(final_dist).sum() != 0:
-            raise ValueError("Final distribution has nan")
-
         return final_dist
 
     def _forward_loop(self,
@@ -286,12 +276,6 @@ class PointerGeneratorNetwork(Model):
         targets = targets[:, 1:]
         proba = torch.log(proba + 1e-12)
         loss = torch.nn.NLLLoss(ignore_index=0)(proba, targets)
-        
-        if torch.isinf(loss).sum() != 0:
-            raise ValueError("Loss is inf")
-        if torch.isnan(loss).sum() != 0:
-            raise ValueError("Loss is nan")
-
         return loss
     
     def _forward_beam_search(self, state: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
