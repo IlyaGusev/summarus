@@ -24,6 +24,7 @@ class PointerGeneratorNetwork(Model):
                  vocab: Vocabulary,
                  source_embedder: TextFieldEmbedder,
                  encoder: Seq2SeqEncoder,
+                 attention: Attention,
                  max_decoding_steps: int,
                  beam_size: int = None,
                  target_namespace: str = "tokens",
@@ -53,7 +54,7 @@ class PointerGeneratorNetwork(Model):
         self._decoder_cell = LSTMCell(self._decoder_input_dim, self._decoder_output_dim)
         self._output_projection_layer = Linear(self._decoder_output_dim, self._num_classes)
         self._p_gen_layer = Linear(self._decoder_output_dim * 3 + self._decoder_input_dim, 1)
-        self._attention = CustomAttention(self._decoder_output_dim)
+        self._attention = attention
 
         # Decoding
         self._scheduled_sampling_ratio = scheduled_sampling_ratio
@@ -106,8 +107,9 @@ class PointerGeneratorNetwork(Model):
 
         is_unk_token = torch.eq(tokens, self._source_unk_index).long()
         tokens = tokens - tokens * is_unk_token + (self._source_vocab_size - 1) * is_unk_token
-        unk_token_nums = token_ids.new_zeros((batch_size, token_ids.size(1)))
         unk_only = token_ids * is_unk_token
+
+        unk_token_nums = token_ids.new_zeros((batch_size, token_ids.size(1)))
         for i in range(batch_size):
             unique = torch.unique(unk_only[i, :], return_inverse=True, sorted=True)[1]
             unk_token_nums[i, :] = unique
@@ -117,7 +119,7 @@ class PointerGeneratorNetwork(Model):
         modified_source_tokens = tokens
         if target_tokens is not None:
             for i in range(batch_size):
-                max_source_num = self.vocab.get_vocab_size() - 1 + torch.max(unk_token_nums[i, :source_max_length])
+                max_source_num = torch.max(tokens[i, :source_max_length])
                 unk_target_tokens_mask = torch.gt(tokens[i, :], max_source_num).long()
                 zero_target_unk = tokens[i, :] - tokens[i, :] * unk_target_tokens_mask
                 tokens[i, :] = zero_target_unk + self._target_unk_index * unk_target_tokens_mask
@@ -125,7 +127,7 @@ class PointerGeneratorNetwork(Model):
             modified_source_tokens = tokens[:, :source_max_length]
 
         source_unk_count = torch.max(unk_token_nums[:, :source_max_length])
-        extra_zeros = unk_token_nums.new_zeros((batch_size, source_unk_count)).float()
+        extra_zeros = tokens.new_zeros((batch_size, source_unk_count), dtype=torch.float32)
         return extra_zeros, modified_source_tokens, modified_target_tokens
 
     def _encode(self, source_tokens: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -135,6 +137,12 @@ class PointerGeneratorNetwork(Model):
         source_mask = util.get_text_field_mask(source_tokens)
         # shape: (batch_size, max_input_sequence_length, encoder_output_dim)
         encoder_outputs = self._encoder.forward(embedded_input, source_mask)
+
+        if torch.isinf(encoder_outputs).sum() != 0:
+            raise ValueError("Encoder outputs has inf")
+        if torch.isnan(encoder_outputs).sum() != 0:
+            raise ValueError("Encoder outputs has nan")
+
         return {
                 "source_mask": source_mask,
                 "encoder_outputs": encoder_outputs,
@@ -169,14 +177,15 @@ class PointerGeneratorNetwork(Model):
         last_predictions_fixed = last_predictions - last_predictions * is_unk + self._target_unk_index * is_unk
         embedded_input = self._target_embedder.forward(last_predictions_fixed)
 
-        decoder_state = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim),
-                                   decoder_context.view(-1, self._decoder_output_dim)), 1)
-        attn_context, attn_scores = self._attention.forward(decoder_state, encoder_outputs, source_mask)
+        attn_scores = self._attention.forward(decoder_hidden, encoder_outputs, source_mask)
+        attn_context = util.weighted_sum(encoder_outputs, attn_scores)
         decoder_input = torch.cat((attn_context, embedded_input), -1)
 
         decoder_hidden, decoder_context = self._decoder_cell(
             decoder_input,
             (decoder_hidden, decoder_context))
+
+        output_projections = self._output_projection_layer(decoder_hidden)
 
         state["decoder_input"] = decoder_input
         state["decoder_hidden"] = decoder_hidden
@@ -184,10 +193,107 @@ class PointerGeneratorNetwork(Model):
         state["attn_scores"] = attn_scores
         state["attn_context"] = attn_context
 
-        output_projections = self._output_projection_layer(decoder_hidden)
-
         return output_projections, state
+    
+    def _get_final_dist(self, state: Dict[str, torch.Tensor], output_projections):
+        attn_dist = state["attn_scores"]
+        tokens = state["tokens"]
+        extra_zeros = state["extra_zeros"]
+        attn_context = state["attn_context"]
+        decoder_input = state["decoder_input"]
+        decoder_hidden = state["decoder_hidden"]
+        decoder_context = state["decoder_context"]
 
+        decoder_state = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim),
+
+                                   decoder_context.view(-1, self._decoder_output_dim)), 1)
+        p_gen = self._p_gen_layer(torch.cat((attn_context, decoder_state, decoder_input), 1))
+        p_gen = torch.sigmoid(p_gen)
+
+        vocab_dist = F.softmax(output_projections, dim=-1)
+
+        vocab_dist = vocab_dist * p_gen
+        attn_dist = attn_dist * (1 - p_gen)
+        if extra_zeros.size(1) != 0:
+            vocab_dist = torch.cat((vocab_dist, extra_zeros), 1)
+        final_dist = vocab_dist.scatter_add(1, tokens, attn_dist)
+        normalization_factor = final_dist.sum(1, keepdim=True)
+        final_dist = final_dist / normalization_factor
+
+        if torch.isinf(final_dist).sum() != 0:
+            raise ValueError("Final distribution has inf")
+        if torch.isnan(final_dist).sum() != 0:
+            raise ValueError("Final distribution has nan")
+
+        return final_dist
+
+    def _forward_loop(self,
+                      state: Dict[str, torch.Tensor],
+                      target_tokens: Dict[str, torch.LongTensor] = None) -> Dict[str, torch.Tensor]:
+        # shape: (batch_size, max_input_sequence_length)
+        source_mask = state["source_mask"]
+        batch_size = source_mask.size()[0]
+
+        if target_tokens:
+            # shape: (batch_size, max_target_sequence_length)
+            targets = target_tokens["tokens"]
+            _, target_sequence_length = targets.size()
+            num_decoding_steps = target_sequence_length - 1
+        else:
+            num_decoding_steps = self._max_decoding_steps
+        last_predictions = source_mask.new_full((batch_size,), fill_value=self._start_index)
+
+        step_proba: List[torch.Tensor] = []
+        step_predictions: List[torch.Tensor] = []
+        for timestep in range(num_decoding_steps):
+            if self.training and torch.rand(1).item() < self._scheduled_sampling_ratio:
+                input_choices = last_predictions
+            elif not target_tokens:                
+                input_choices = last_predictions
+            else:
+                input_choices = targets[:, timestep]
+
+            output_projections, state = self._prepare_output_projections(input_choices, state)
+            final_dist = self._get_final_dist(state, output_projections)
+            step_proba.append(final_dist)
+
+            _, predicted_classes = torch.max(final_dist, 1)
+            last_predictions = predicted_classes
+            step_predictions.append(last_predictions.unsqueeze(1))
+
+        # shape: (batch_size, num_decoding_steps)
+        predictions = torch.cat(step_predictions, 1)
+
+        output_dict = {"predictions": predictions}
+
+        if target_tokens:
+            # shape: (batch_size, num_decoding_steps, num_classes)
+            num_classes = step_proba[0].size(1)
+            proba = step_proba[0].new_zeros((batch_size, num_classes, len(step_proba)))
+            for i, p in enumerate(step_proba):
+                proba[:, :, i] = p
+
+            target_mask = util.get_text_field_mask(target_tokens)
+            loss = self._get_loss(proba, state["target_tokens"], target_mask)
+            output_dict["loss"] = loss
+
+        return output_dict
+
+    @staticmethod
+    def _get_loss(proba: torch.LongTensor,
+                  targets: torch.LongTensor,
+                  target_mask: torch.LongTensor) -> torch.Tensor:
+        targets = targets[:, 1:]
+        proba = torch.log(proba + 1e-12)
+        loss = torch.nn.NLLLoss(ignore_index=0)(proba, targets)
+        
+        if torch.isinf(loss).sum() != 0:
+            raise ValueError("Loss is inf")
+        if torch.isnan(loss).sum() != 0:
+            raise ValueError("Loss is nan")
+
+        return loss
+    
     def _forward_beam_search(self, state: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Make forward pass during prediction using a beam search."""
         batch_size = state["source_mask"].size()[0]
@@ -212,114 +318,6 @@ class PointerGeneratorNetwork(Model):
         final_dist = self._get_final_dist(state, output_projections)
 
         return torch.log(final_dist), state
-
-    def _get_final_dist(self, state: Dict[str, torch.Tensor], output_projections):
-        attn_dist = state["attn_scores"]
-        tokens = state["tokens"]
-        extra_zeros = state["extra_zeros"]
-        attn_context = state["attn_context"]
-        decoder_input = state["decoder_input"]
-        decoder_hidden = state["decoder_hidden"]
-        decoder_context = state["decoder_context"]
-
-        decoder_state = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim),
-                                   decoder_context.view(-1, self._decoder_output_dim)), 1)
-        p_gen = self._p_gen_layer(torch.cat((attn_context, decoder_state, decoder_input), 1))
-        p_gen = torch.sigmoid(p_gen)
-
-        vocab_dist = F.softmax(output_projections, dim=-1)
-
-        vocab_dist = vocab_dist * p_gen
-        attn_dist = attn_dist * (1 - p_gen)
-        vocab_dist = torch.cat((vocab_dist, extra_zeros), 1)
-        final_dist = vocab_dist.scatter_add(1, tokens, attn_dist)
-
-        if torch.isinf(final_dist).sum() != 0:
-            raise ValueError("Final distribution has inf")
-        if torch.isnan(final_dist).sum() != 0:
-            raise ValueError("Final distribution has nan")
-
-        return final_dist
-
-    def _forward_loop(self,
-                      state: Dict[str, torch.Tensor],
-                      target_tokens: Dict[str, torch.LongTensor] = None) -> Dict[str, torch.Tensor]:
-        # shape: (batch_size, max_input_sequence_length)
-        source_mask = state["source_mask"]
-
-        batch_size = source_mask.size()[0]
-
-        if target_tokens:
-            # shape: (batch_size, max_target_sequence_length)
-            targets = target_tokens["tokens"]
-
-            _, target_sequence_length = targets.size()
-
-            # The last input from the target is either padding or the end symbol.
-            # Either way, we don't have to process it.
-            num_decoding_steps = target_sequence_length - 1
-        else:
-            num_decoding_steps = self._max_decoding_steps
-
-        # Initialize target predictions with the start index.
-        # shape: (batch_size,)
-        last_predictions = source_mask.new_full((batch_size,), fill_value=self._start_index)
-
-        step_proba: List[torch.Tensor] = []
-        step_predictions: List[torch.Tensor] = []
-        for timestep in range(num_decoding_steps):
-            if self.training and torch.rand(1).item() < self._scheduled_sampling_ratio:
-                # Use gold tokens at test time and at a rate of 1 - _scheduled_sampling_ratio
-                # during training.
-                # shape: (batch_size,)
-                input_choices = last_predictions
-            elif not target_tokens:
-                # shape: (batch_size,)
-                input_choices = last_predictions
-            else:
-                # shape: (batch_size,)
-                input_choices = targets[:, timestep]
-
-            # shape: (batch_size, num_classes)
-            output_projections, state = self._prepare_output_projections(input_choices, state)
-            final_dist = self._get_final_dist(state, output_projections)
-            step_proba.append(final_dist)
-
-            # shape (predicted_classes): (batch_size,)
-            _, predicted_classes = torch.max(final_dist, 1)
-
-            # shape (predicted_classes): (batch_size,)
-            last_predictions = predicted_classes
-
-            step_predictions.append(last_predictions.unsqueeze(1))
-
-        # shape: (batch_size, num_decoding_steps)
-        predictions = torch.cat(step_predictions, 1)
-
-        output_dict = {"predictions": predictions}
-
-        if target_tokens:
-            # shape: (batch_size, num_decoding_steps, num_classes)
-            proba = step_proba[0].new_zeros((batch_size, len(step_proba), step_proba[0].size(1)))
-            for i, p in enumerate(step_proba):
-                proba[:, i, :] = p
-
-            # Compute loss.
-            target_mask = util.get_text_field_mask(target_tokens)
-            target_tokens = state["target_tokens"]
-            loss = self._get_loss(proba, target_tokens, target_mask)
-            output_dict["loss"] = loss
-
-        return output_dict
-
-    @staticmethod
-    def _get_loss(proba: torch.LongTensor,
-                  targets: torch.LongTensor,
-                  target_mask: torch.LongTensor) -> torch.Tensor:
-        targets = targets[:, 1:]
-        proba = torch.log(proba.transpose(1, 2))
-        loss = torch.nn.NLLLoss(ignore_index=0)(proba, targets)
-        return loss
 
     def decode(self, output_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         predicted_indices = output_dict["predictions"]

@@ -12,7 +12,7 @@ from allennlp.models.model import Model
 from allennlp.modules.token_embedders import Embedding
 from allennlp.nn.beam_search import BeamSearch
 from allennlp.models.encoder_decoders.simple_seq2seq import SimpleSeq2Seq
-
+from allennlp.nn import util
 
 class CustomAttention(torch.nn.Module):
     def __init__(self,
@@ -43,13 +43,8 @@ class CustomAttention(torch.nn.Module):
         scores = F.softmax(scores, dim=1) * mask
         normalization_factor = scores.sum(1, keepdim=True)
         scores = scores / normalization_factor
-        scores = scores.unsqueeze(1)  # B x 1 x l
-
-        context = torch.bmm(scores, encoder_outputs)
-        context = context.view((-1, self._hidden_size))
-
-        scores = scores.view(-1, l)  # B x l
-
+        context = util.weighted_sum(encoder_outputs, scores)
+        
         return context, scores
 
 
