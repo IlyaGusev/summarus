@@ -1,0 +1,56 @@
+{
+  "model": {
+    "type": "pgn",
+    "target_namespace": "target_tokens",
+    "source_embedder": {
+      "type": "basic",
+      "token_embedders": {
+        "tokens": {
+          "type": "embedding",
+          "embedding_dim": 128
+        }
+      }
+    },
+    "encoder": {
+      "type": "lstm",
+      "num_layers": 1,
+      "input_size": 128,
+      "hidden_size": 256,
+      "bidirectional": true
+    },
+    "attention": {
+      "type": "bahdanau",
+      "dim": 512
+    },
+    "max_decoding_steps": 100,
+    "beam_size": 1
+  },
+  "iterator": {
+    "type": "bucket",
+    "sorting_keys": [["source_tokens", "num_tokens"]],
+    "batch_size": 20,
+    "padding_noise": 0.0,
+    "cache_instances": true
+  },
+  "trainer": {
+    "num_epochs": 100,
+    "grad_norm": 2.0,
+    "cuda_device": -1,
+    "summary_interval": 1,
+    "shuffle": false,
+    "should_log_parameter_statistics": false,
+    "optimizer": {
+      "type": "adam",
+      "lr": 0.005
+    }
+  },
+  "vocabulary": {
+    "max_vocab_size": 20
+  },
+  "reader": {
+    "type": "ria",
+    "separate_namespaces": true,
+    "target_namespace": "target_tokens",
+    "save_pgn_fields": true
+  }
+}

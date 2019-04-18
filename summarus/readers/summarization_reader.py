@@ -28,7 +28,7 @@ class SummarizationReader(DatasetReader):
                  save_pgn_fields: bool = False) -> None:
         super().__init__(lazy=True)
 
-        assert save_pgn_fields or save_copy_fields
+        assert save_pgn_fields or save_copy_fields or (not save_pgn_fields and not save_copy_fields)
 
         self._source_max_tokens = source_max_tokens
         self._target_max_tokens = target_max_tokens
@@ -53,7 +53,7 @@ class SummarizationReader(DatasetReader):
                 continue
             instance = self.text_to_instance(source, target)
             yield instance
-    
+
     @staticmethod
     def _tokens_to_ids(tokens: List[Token]) -> List[int]:
         ids = dict()
@@ -80,6 +80,8 @@ class SummarizationReader(DatasetReader):
             meta_fields["source_tokens"] = [x.text for x in source_tokens[1:-1]]
 
         if self._save_pgn_fields:
+            source_to_target_field = NamespaceSwappingField(source_tokens, self._target_namespace)
+            result["source_to_target"] = source_to_target_field
             meta_fields["source_tokens"] = [x.text for x in source_tokens]
 
         if target:
@@ -109,7 +111,6 @@ class SummarizationReader(DatasetReader):
         elif self._save_pgn_fields:
             source_token_ids = self._tokens_to_ids(source_tokens)
             result["source_token_ids"] = ArrayField(np.array(source_token_ids))
-        
         if self._save_copy_fields or self._save_pgn_fields:
             result["metadata"] = MetadataField(meta_fields)
         return Instance(result)

@@ -15,8 +15,6 @@ from allennlp.modules import Attention
 from allennlp.nn.beam_search import BeamSearch
 from allennlp.nn import util
 
-from summarus.seq2seq import CustomAttention
-
 
 @Model.register("pgn")
 class PointerGeneratorNetwork(Model):
@@ -29,7 +27,8 @@ class PointerGeneratorNetwork(Model):
                  beam_size: int = None,
                  target_namespace: str = "tokens",
                  target_embedding_dim: int = None,
-                 scheduled_sampling_ratio: float = 0.) -> None:
+                 scheduled_sampling_ratio: float = 0.,
+                 projection_dim: int = None) -> None:
         super(PointerGeneratorNetwork, self).__init__(vocab)
 
         self._target_namespace = target_namespace
@@ -52,9 +51,12 @@ class PointerGeneratorNetwork(Model):
         self._decoder_input_dim = self._encoder_output_dim + self._target_embedding_dim
         self._decoder_output_dim = self._encoder_output_dim
         self._decoder_cell = LSTMCell(self._decoder_input_dim, self._decoder_output_dim)
-        self._output_projection_layer = Linear(self._decoder_output_dim, self._num_classes)
+        self._projection_dim = projection_dim or self._source_embedder.get_output_dim()
+        self._hidden_projection_layer = Linear(self._decoder_output_dim, self._projection_dim)
+        self._output_projection_layer = Linear(self._projection_dim, self._num_classes)
         self._p_gen_layer = Linear(self._decoder_output_dim * 3 + self._decoder_input_dim, 1)
         self._attention = attention
+        self._eps = 1e-31
 
         # Decoding
         self._scheduled_sampling_ratio = scheduled_sampling_ratio
@@ -64,14 +66,14 @@ class PointerGeneratorNetwork(Model):
     def forward(self,
                 source_tokens: Dict[str, torch.LongTensor],
                 source_token_ids: torch.Tensor,
+                source_to_target: torch.Tensor,
                 target_tokens: Dict[str, torch.LongTensor] = None,
                 target_token_ids: torch.Tensor = None,
-                source_to_target=None,
                 metadata=None) -> Dict[str, torch.Tensor]:
         state = self._encode(source_tokens)
         target_tokens_tensor = target_tokens["tokens"].long() if target_tokens else None
         extra_zeros, modified_source_tokens, modified_target_tokens = self._prepare(
-            source_tokens["tokens"].long(), source_token_ids, target_tokens_tensor, target_token_ids)
+            source_to_target, source_token_ids, target_tokens_tensor, target_token_ids)
 
         state["tokens"] = modified_source_tokens
         state["extra_zeros"] = extra_zeros
@@ -82,7 +84,7 @@ class PointerGeneratorNetwork(Model):
             state = self._init_decoder_state(state)
             output_dict = self._forward_loop(state, target_tokens)
         output_dict["metadata"] = metadata
-        output_dict["source_tokens"] = source_tokens["tokens"]
+        output_dict["source_to_target"] = source_to_target
 
         if not self.training:
             state = self._init_decoder_state(state)
@@ -100,26 +102,27 @@ class PointerGeneratorNetwork(Model):
         source_max_length = source_tokens.size(1)
 
         tokens = source_tokens
-        token_ids = source_token_ids.long()
+        token_ids = source_token_ids.long() 
         if target_tokens is not None:
             tokens = torch.cat((tokens, target_tokens), 1)
             token_ids = torch.cat((token_ids, target_token_ids.long()), 1)
 
-        is_unk_token = torch.eq(tokens, self._source_unk_index).long()
-        tokens = tokens - tokens * is_unk_token + (self._source_vocab_size - 1) * is_unk_token
-        unk_only = token_ids * is_unk_token
+        is_unk = torch.eq(tokens, self._target_unk_index).long()
+        unk_only = token_ids * is_unk
 
         unk_token_nums = token_ids.new_zeros((batch_size, token_ids.size(1)))
         for i in range(batch_size):
             unique = torch.unique(unk_only[i, :], return_inverse=True, sorted=True)[1]
             unk_token_nums[i, :] = unique
-        tokens += unk_token_nums
+
+        tokens = tokens - tokens * is_unk + (self._target_vocab_size - 1) * is_unk + unk_token_nums
 
         modified_target_tokens = None
         modified_source_tokens = tokens
         if target_tokens is not None:
             for i in range(batch_size):
                 max_source_num = torch.max(tokens[i, :source_max_length])
+                max_source_num = max(self._target_vocab_size - 1, max_source_num)
                 unk_target_tokens_mask = torch.gt(tokens[i, :], max_source_num).long()
                 zero_target_unk = tokens[i, :] - tokens[i, :] * unk_target_tokens_mask
                 tokens[i, :] = zero_target_unk + self._target_unk_index * unk_target_tokens_mask
@@ -180,7 +183,7 @@ class PointerGeneratorNetwork(Model):
             decoder_input,
             (decoder_hidden, decoder_context))
 
-        output_projections = self._output_projection_layer(decoder_hidden)
+        output_projections = self._output_projection_layer(self._hidden_projection_layer(decoder_hidden))
 
         state["decoder_input"] = decoder_input
         state["decoder_hidden"] = decoder_hidden
@@ -189,7 +192,7 @@ class PointerGeneratorNetwork(Model):
         state["attn_context"] = attn_context
 
         return output_projections, state
-    
+
     def _get_final_dist(self, state: Dict[str, torch.Tensor], output_projections):
         attn_dist = state["attn_scores"]
         tokens = state["tokens"]
@@ -200,7 +203,6 @@ class PointerGeneratorNetwork(Model):
         decoder_context = state["decoder_context"]
 
         decoder_state = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim),
-
                                    decoder_context.view(-1, self._decoder_output_dim)), 1)
         p_gen = self._p_gen_layer(torch.cat((attn_context, decoder_state, decoder_input), 1))
         p_gen = torch.sigmoid(p_gen)
@@ -224,13 +226,13 @@ class PointerGeneratorNetwork(Model):
         source_mask = state["source_mask"]
         batch_size = source_mask.size()[0]
 
+        num_decoding_steps = self._max_decoding_steps
         if target_tokens:
             # shape: (batch_size, max_target_sequence_length)
             targets = target_tokens["tokens"]
             _, target_sequence_length = targets.size()
             num_decoding_steps = target_sequence_length - 1
-        else:
-            num_decoding_steps = self._max_decoding_steps
+
         last_predictions = source_mask.new_full((batch_size,), fill_value=self._start_index)
 
         step_proba: List[torch.Tensor] = []
@@ -238,7 +240,7 @@ class PointerGeneratorNetwork(Model):
         for timestep in range(num_decoding_steps):
             if self.training and torch.rand(1).item() < self._scheduled_sampling_ratio:
                 input_choices = last_predictions
-            elif not target_tokens:                
+            elif not target_tokens:
                 input_choices = last_predictions
             else:
                 input_choices = targets[:, timestep]
@@ -263,8 +265,7 @@ class PointerGeneratorNetwork(Model):
             for i, p in enumerate(step_proba):
                 proba[:, :, i] = p
 
-            target_mask = util.get_text_field_mask(target_tokens)
-            loss = self._get_loss(proba, state["target_tokens"], target_mask)
+            loss = self._get_loss(proba, state["target_tokens"], self._eps)
             output_dict["loss"] = loss
 
         return output_dict
@@ -272,12 +273,12 @@ class PointerGeneratorNetwork(Model):
     @staticmethod
     def _get_loss(proba: torch.LongTensor,
                   targets: torch.LongTensor,
-                  target_mask: torch.LongTensor) -> torch.Tensor:
+                  eps: float) -> torch.Tensor:
         targets = targets[:, 1:]
-        proba = torch.log(proba + 1e-12)
+        proba = torch.log(proba + eps)
         loss = torch.nn.NLLLoss(ignore_index=0)(proba, targets)
         return loss
-    
+
     def _forward_beam_search(self, state: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Make forward pass during prediction using a beam search."""
         batch_size = state["source_mask"].size()[0]
@@ -300,15 +301,14 @@ class PointerGeneratorNetwork(Model):
         # shape: (group_size, num_classes)
         output_projections, state = self._prepare_output_projections(last_predictions, state)
         final_dist = self._get_final_dist(state, output_projections)
-
-        return torch.log(final_dist), state
+        return torch.log(final_dist + self._eps), state
 
     def decode(self, output_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         predicted_indices = output_dict["predictions"]
         if not isinstance(predicted_indices, np.ndarray):
             predicted_indices = predicted_indices.detach().cpu().numpy()
         all_predicted_tokens = []
-        for (indices, metadata), source_tokens in zip(zip(predicted_indices, output_dict["metadata"]), output_dict["source_tokens"]):
+        for (indices, metadata), source_to_target in zip(zip(predicted_indices, output_dict["metadata"]), output_dict["source_to_target"]):
             # Beam search gives us the top k results for each source sentence in the batch
             # but we just want the single best.
             if len(indices.shape) > 1:
@@ -318,20 +318,20 @@ class PointerGeneratorNetwork(Model):
             if self._end_index in indices:
                 indices = indices[:indices.index(self._end_index)]
             predicted_tokens = []
+
+            unk_tokens = list()
+            for i, t in enumerate(source_to_target):
+                if t == self._target_unk_index:
+                    token = metadata["source_tokens"][i]
+                    if token not in unk_tokens:
+                        unk_tokens.append(token)
+
             for x in indices:
-                if x < self.vocab.get_vocab_size():
+                if x < self._target_vocab_size:
                     token = self.vocab.get_token_from_index(x, namespace=self._target_namespace)
                 else:
-                    unk_number = x - self._source_vocab_size
-                    unk_index = 0
-                    result = 0
-                    for i, t in enumerate(source_tokens):
-                        if t == self._source_unk_index:
-                            if unk_index == unk_number:
-                                result = i
-                                break
-                            unk_index += 1
-                    token = metadata["source_tokens"][result]
+                    unk_number = x - self._target_vocab_size
+                    token = unk_tokens[unk_number]
                 predicted_tokens.append(token)
             all_predicted_tokens.append(predicted_tokens)
         output_dict["predicted_tokens"] = all_predicted_tokens
