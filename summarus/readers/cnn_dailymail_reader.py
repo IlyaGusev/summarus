@@ -78,7 +78,8 @@ class CNNDailyMailReader(SummarizationReader):
                  target_max_tokens: int = 100,
                  separate_namespaces: bool = False,
                  target_namespace: str = "target_tokens",
-                 save_copy_fields: bool = False) -> None:
+                 save_copy_fields: bool = False,
+                 save_pgn_fields: bool = False) -> None:
         super().__init__(
             tokenizer=tokenizer,
             source_token_indexers=source_token_indexers,
@@ -87,7 +88,8 @@ class CNNDailyMailReader(SummarizationReader):
             target_max_tokens=target_max_tokens,
             separate_namespaces=separate_namespaces,
             target_namespace=target_namespace,
-            save_copy_fields=save_copy_fields
+            save_copy_fields=save_copy_fields,
+            save_pgn_fields=save_pgn_fields
         )
 
         self._cnn_tokenized_dir = cnn_tokenized_dir

@@ -33,6 +33,7 @@ pip install -r requirements.txt
 | seq2seq-words-25m | 36.96 | 35.19 | 19.68 | 19.02 | 34.30 | 33.60 | 30.31    | 44.69 |
 | seq2seq-bpe-5m    | 38.78 | 36.91 | 21.87 | 20.90 | 35.96 | 35.24 | 32.20    | 49.77 |
 | seq2seq-bpe-25m   | 40.30 | 38.83 | 22.94 | 22.18 | 37.50 | 37.01 | 33.58    | 51.66 |
+| pgn-dot-words-5m  | 37.91 | 35.98 | 20.43 | 19.55 | 35.19 | 34.36 | 31.18    | 47.08 |
 | copynet-words-10m | 39.48 | 38.39 | 22.57 | 22.05 | 36.95 | 36.69 | 33.00    | 51.99 |
 | copynet-bpe-10m   | 40.03 | 38.68 | 23.25 | 22.50 | 37.44 | 37.04 | 33.57    | 52.57 |
 | copynet-words-25m | 40.38 | 39.46 | 23.26 | 22.83 | 37.80 | 37.70 | 33.81    | 52.99 |
@@ -94,7 +95,6 @@ You should use preprocess.py to generate a vocabulary based on the train dataset
 
 Script for model evaluation. The test dataset should have the same format as the train dataset.
 
-
 | Argument          | Default | Description                                               |
 |:------------------|:--------|:----------------------------------------------------------|
 | --test-path       |         | path to test dataset                                      |
@@ -103,4 +103,4 @@ Script for model evaluation. The test dataset should have the same format as the
 | --max-count       | None    | how many test examples to consider                        |
 | --report-every    | None    | print metrics every N'th step                             |
 | --config-path     | None    | custom path to config                                     |
-| --batch_size      | 32      | size of a batch with test examples to run simultaneously  |
+| --batch-size      | 32      | size of a batch with test examples to run simultaneously  |

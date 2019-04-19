@@ -21,7 +21,7 @@ def detokenize(text):
         text = text.replace(" " + ch, ch)
     for ch in opening_punctuation:
         text = text.replace(ch + " ", ch)
-    res = [r'"\s[^\s]+\s"', r"'\s[^\s]+\s'"]
+    res = [r'"\s[^"]+\s"', r"'\s[^']+\s'"]
     for r in res:
         for f in re.findall(r, text, re.U):
             text = text.replace(f, f[0] + f[2:-2] + f[-1])

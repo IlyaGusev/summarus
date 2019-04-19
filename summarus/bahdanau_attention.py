@@ -1,0 +1,48 @@
+import torch
+import torch.nn.functional as F
+from torch.nn.modules.linear import Linear
+
+from allennlp.modules.attention import Attention
+from allennlp.nn.util import masked_softmax
+
+@Attention.register("bahdanau")
+class BahdanauAttention(Attention):
+    def __init__(self, dim: int, normalize: bool = True, use_coverage: bool = False):
+        super(BahdanauAttention, self).__init__(normalize)
+
+        self._dim = dim
+        self._use_coverage = use_coverage
+
+        self._decoder_hidden_projection_layer = Linear(dim, dim, bias=False)
+        self._encoder_outputs_projection_layer = Linear(dim, dim, bias=False)
+        self._v = Linear(dim, 1, bias=False)
+        if use_coverage:
+            self._coverage_projection_layer = Linear(1, dim, bias=False)
+
+    def forward(self,
+                vector: torch.Tensor,
+                matrix: torch.Tensor,
+                matrix_mask: torch.Tensor = None,
+                coverage: torch.Tensor = None) -> torch.Tensor:
+        similarities = self._forward_internal(vector, matrix, coverage)
+        if self._normalize:
+            return masked_softmax(similarities, matrix_mask)
+        else:
+            return similarities
+
+    def _forward_internal(self, decoder_state, encoder_outputs, coverage = None):
+        batch_size, l, _ = list(encoder_outputs.size())
+
+        encoder_feature = self._encoder_outputs_projection_layer(encoder_outputs)
+        decoder_feature = self._decoder_hidden_projection_layer(decoder_state)
+        decoder_feature = decoder_feature.unsqueeze(1).expand(batch_size, l, self._dim)
+
+        features = encoder_feature + decoder_feature
+        if self._use_coverage and coverage is not None:
+            coverage_input = coverage.unsqueeze(2)
+            coverage_feature = self._coverage_projection_layer(coverage_input)
+            features = features + coverage_feature
+
+        scores = self._v(torch.tanh(features)).squeeze(2)
+        return scores
+

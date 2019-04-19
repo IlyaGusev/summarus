@@ -16,7 +16,7 @@ def preprocess(train_path, vocabulary_path, config_path):
 
     reader_params = params.pop("reader", default=Params({}))
     vocabulary_params = params.pop("vocabulary", default=Params({}))
-    
+
     reader = DatasetReader.from_params(reader_params)
     dataset = reader.read(train_path)
 

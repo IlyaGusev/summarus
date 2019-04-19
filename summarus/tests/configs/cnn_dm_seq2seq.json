@@ -2,6 +2,7 @@
   "model": {
     "type": "seq2seq",
     "target_namespace": "tokens",
+    "use_projection": true,
     "projection_dim": 256,
     "tie_embeddings": true,
     "source_embedder": {
@@ -20,33 +21,34 @@
       "hidden_size": 256,
       "bidirectional": true
     },
+    "attention": {
+      "type": "bahdanau",
+      "dim": 512
+    },
     "max_decoding_steps": 100,
     "beam_size": 5
   },
   "iterator": {
     "type": "bucket",
     "sorting_keys": [["source_tokens", "num_tokens"]],
-    "batch_size": 16,
+    "batch_size": 5,
     "padding_noise": 0.0,
     "cache_instances": true
   },
   "trainer": {
-    "num_epochs": 10,
+    "num_epochs": 50,
     "grad_norm": 2.0,
-    "cuda_device": 0,
+    "cuda_device": -1,
     "summary_interval": 1,
     "shuffle": false,
     "should_log_parameter_statistics": false,
     "optimizer": {
       "type": "adam",
-      "lr": 0.001
+      "lr": 0.005
     }
   },
   "reader": {
-    "separate_namespaces": false,
-    "max_vocab_size": 50000,
     "type": "cnn_dailymail",
-    "cnn_tokenized_dir": "/data/cnn_dailymail/cnn_stories_tokenized",
-    "dm_tokenized_dir": "/data/cnn_dailymail/dm_stories_tokenized"
+    "separate_namespaces": false
   }
 }
