@@ -32,7 +32,7 @@
     "cache_instances": true
   },
   "trainer": {
-    "num_epochs": 100,
+    "num_epochs": 70,
     "grad_norm": 2.0,
     "cuda_device": -1,
     "summary_interval": 1,
@@ -48,6 +48,8 @@
   },
   "reader": {
     "type": "cnn_dailymail",
+    "source_max_tokens": 400,
+    "target_max_tokens": 100,
     "separate_namespaces": true,
     "target_namespace": "target_tokens",
     "save_pgn_fields": true

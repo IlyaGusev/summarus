@@ -50,6 +50,8 @@
   },
   "reader": {
     "type": "ria",
+    "source_max_tokens": 400,
+    "target_max_tokens": 100,
     "separate_namespaces": true,
     "target_namespace": "target_tokens",
     "save_pgn_fields": true

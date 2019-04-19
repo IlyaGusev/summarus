@@ -49,6 +49,8 @@
   },
   "reader": {
     "type": "cnn_dailymail",
-    "separate_namespaces": false
+    "separate_namespaces": false,
+    "source_max_tokens": 400,
+    "target_max_tokens": 100
   }
 }
