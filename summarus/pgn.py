@@ -28,7 +28,9 @@ class PointerGeneratorNetwork(Model):
                  target_namespace: str = "tokens",
                  target_embedding_dim: int = None,
                  scheduled_sampling_ratio: float = 0.,
-                 projection_dim: int = None) -> None:
+                 projection_dim: int = None,
+                 use_coverage: bool = False,
+                 coverage_loss_weight: float = None) -> None:
         super(PointerGeneratorNetwork, self).__init__(vocab)
 
         self._target_namespace = target_namespace
@@ -56,7 +58,9 @@ class PointerGeneratorNetwork(Model):
         self._output_projection_layer = Linear(self._projection_dim, self._num_classes)
         self._p_gen_layer = Linear(self._decoder_output_dim * 3 + self._decoder_input_dim, 1)
         self._attention = attention
-        self._eps = 1e-31
+        self._use_coverage = use_coverage
+        self._coverage_loss_weight = coverage_loss_weight
+        self._eps = 1e-45
 
         # Decoding
         self._scheduled_sampling_ratio = scheduled_sampling_ratio
@@ -102,7 +106,7 @@ class PointerGeneratorNetwork(Model):
         source_max_length = source_tokens.size(1)
 
         tokens = source_tokens
-        token_ids = source_token_ids.long() 
+        token_ids = source_token_ids.long()
         if target_tokens is not None:
             tokens = torch.cat((tokens, target_tokens), 1)
             token_ids = torch.cat((token_ids, target_token_ids.long()), 1)
@@ -156,7 +160,11 @@ class PointerGeneratorNetwork(Model):
         # Initialize the decoder hidden state with the final output of the encoder.
         # shape: (batch_size, decoder_output_dim)
         state["decoder_hidden"] = final_encoder_output
-        state["decoder_context"] = state["encoder_outputs"].new_zeros(batch_size, self._decoder_output_dim)
+
+        encoder_outputs = state["encoder_outputs"]
+        state["decoder_context"] = encoder_outputs.new_zeros(batch_size, self._decoder_output_dim)
+        if self._use_coverage:
+            state["coverage"] = encoder_outputs.new_zeros(batch_size, encoder_outputs.size(1))
         return state
 
     def _prepare_output_projections(self,
@@ -175,7 +183,13 @@ class PointerGeneratorNetwork(Model):
         last_predictions_fixed = last_predictions - last_predictions * is_unk + self._target_unk_index * is_unk
         embedded_input = self._target_embedder.forward(last_predictions_fixed)
 
-        attn_scores = self._attention.forward(decoder_hidden, encoder_outputs, source_mask)
+        if not self._use_coverage:
+            attn_scores = self._attention.forward(decoder_hidden, encoder_outputs, source_mask)
+        else:
+            coverage = state["coverage"]
+            attn_scores = self._attention.forward(decoder_hidden, encoder_outputs, source_mask, coverage)
+            coverage = coverage + attn_scores
+            state["coverage"] = coverage
         attn_context = util.weighted_sum(encoder_outputs, attn_scores)
         decoder_input = torch.cat((attn_context, embedded_input), -1)
 
@@ -237,6 +251,8 @@ class PointerGeneratorNetwork(Model):
 
         step_proba: List[torch.Tensor] = []
         step_predictions: List[torch.Tensor] = []
+        if self._use_coverage:
+            coverage_loss = None
         for timestep in range(num_decoding_steps):
             if self.training and torch.rand(1).item() < self._scheduled_sampling_ratio:
                 input_choices = last_predictions
@@ -245,9 +261,16 @@ class PointerGeneratorNetwork(Model):
             else:
                 input_choices = targets[:, timestep]
 
+            if self._use_coverage:
+                coverage = state["coverage"]
+
             output_projections, state = self._prepare_output_projections(input_choices, state)
             final_dist = self._get_final_dist(state, output_projections)
             step_proba.append(final_dist)
+
+            if self._use_coverage:
+                step_coverage_loss = torch.sum(torch.min(state["attn_scores"], coverage), 1)
+                coverage_loss = coverage_loss + step_coverage_loss if coverage_loss is not None else step_coverage_loss
 
             _, predicted_classes = torch.max(final_dist, 1)
             last_predictions = predicted_classes
@@ -266,6 +289,9 @@ class PointerGeneratorNetwork(Model):
                 proba[:, :, i] = p
 
             loss = self._get_loss(proba, state["target_tokens"], self._eps)
+            if self._use_coverage:
+                coverage_loss = torch.mean(coverage_loss / num_decoding_steps)
+                loss = loss + self._coverage_loss_weight * coverage_loss
             output_dict["loss"] = loss
 
         return output_dict
@@ -280,7 +306,6 @@ class PointerGeneratorNetwork(Model):
         return loss
 
     def _forward_beam_search(self, state: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        """Make forward pass during prediction using a beam search."""
         batch_size = state["source_mask"].size()[0]
         start_predictions = state["source_mask"].new_full((batch_size,), fill_value=self._start_index)
 
@@ -301,7 +326,8 @@ class PointerGeneratorNetwork(Model):
         # shape: (group_size, num_classes)
         output_projections, state = self._prepare_output_projections(last_predictions, state)
         final_dist = self._get_final_dist(state, output_projections)
-        return torch.log(final_dist + self._eps), state
+        log_probabilities = torch.log(final_dist + self._eps)
+        return log_probabilities, state
 
     def decode(self, output_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         predicted_indices = output_dict["predictions"]

@@ -1,5 +1,7 @@
 import unittest
 import os
+import torch
+import numpy as np
 
 from allennlp.data.vocabulary import Vocabulary, DEFAULT_OOV_TOKEN
 from allennlp.common.params import Params
@@ -15,6 +17,10 @@ from summarus.settings import TEST_URLS_FILE, TEST_CONFIG_DIR, TEST_STORIES_DIR,
 class TestSummarizationModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        seed = 1337
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        torch.backends.cudnn.set_flags(True, False, True, True)
         cls.params = []
         for file_name in os.listdir(TEST_CONFIG_DIR):
             if not file_name.endswith(".json"):

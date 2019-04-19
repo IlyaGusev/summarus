@@ -1,6 +1,6 @@
 {
   "model": {
-    "type": "pgn",
+    "type": "custom_copynet_seq2seq",
     "target_namespace": "target_tokens",
     "source_embedder": {
       "type": "basic",
@@ -43,16 +43,10 @@
       "lr": 0.005
     }
   },
-  "vocabulary": {
-    "max_vocab_size": 20
-  },
   "reader": {
     "type": "cnn_dailymail",
     "separate_namespaces": true,
     "target_namespace": "target_tokens",
-    "save_pgn_fields": true,
-    "tokenizer": {
-        "type": "word"
-    }
+    "save_copy_fields": true
   }
 }

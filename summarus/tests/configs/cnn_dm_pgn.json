@@ -19,16 +19,15 @@
       "bidirectional": true
     },
     "attention": {
-      "type": "bahdanau",
-      "dim": 512
+      "type": "dot_product"
     },
     "max_decoding_steps": 100,
-    "beam_size": 1
+    "beam_size": 5
   },
   "iterator": {
     "type": "bucket",
     "sorting_keys": [["source_tokens", "num_tokens"]],
-    "batch_size": 20,
+    "batch_size": 5,
     "padding_noise": 0.0,
     "cache_instances": true
   },
@@ -48,7 +47,7 @@
     "max_vocab_size": 20
   },
   "reader": {
-    "type": "ria",
+    "type": "cnn_dailymail",
     "separate_namespaces": true,
     "target_namespace": "target_tokens",
     "save_pgn_fields": true

@@ -49,9 +49,6 @@
   },
   "reader": {
     "type": "cnn_dailymail",
-    "separate_namespaces": false,
-    "tokenizer": {
-        "type": "word"
-    }
+    "separate_namespaces": false
   }
 }
