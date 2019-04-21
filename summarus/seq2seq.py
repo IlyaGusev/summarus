@@ -1,19 +1,13 @@
 from typing import Dict, Tuple
 
 import torch
-import torch.nn.functional as F
 from torch.nn.modules.linear import Linear
-from torch.nn.modules.rnn import LSTMCell
 
-from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.modules import TextFieldEmbedder, Seq2SeqEncoder
 from allennlp.models.model import Model
-from allennlp.modules.token_embedders import Embedding
-from allennlp.nn.beam_search import BeamSearch
 from allennlp.modules import Attention
 from allennlp.models.encoder_decoders.simple_seq2seq import SimpleSeq2Seq
-from allennlp.nn import util
 
 
 @Model.register("seq2seq")
@@ -69,7 +63,6 @@ class Seq2Seq(SimpleSeq2Seq):
         encoder_outputs = state["encoder_outputs"]
         # shape: (group_size, max_input_sequence_length)
         source_mask = state["source_mask"]
-        batch_size = source_mask.size()[0]
         # shape: (group_size, decoder_output_dim)
         decoder_hidden = state["decoder_hidden"]
         # shape: (group_size, decoder_output_dim)
