@@ -1,9 +1,9 @@
 import torch
-import torch.nn.functional as F
 from torch.nn.modules.linear import Linear
 
 from allennlp.modules.attention import Attention
 from allennlp.nn.util import masked_softmax
+
 
 @Attention.register("bahdanau")
 class BahdanauAttention(Attention):
@@ -30,12 +30,16 @@ class BahdanauAttention(Attention):
         else:
             return similarities
 
-    def _forward_internal(self, decoder_state, encoder_outputs, coverage = None):
-        batch_size, l, _ = list(encoder_outputs.size())
+    def _forward_internal(self,
+                          decoder_state: torch.Tensor,
+                          encoder_outputs: torch.Tensor,
+                          coverage: torch.Tensor=None):
+        batch_size = encoder_outputs.size(0)
+        source_length = encoder_outputs.size(1)
 
         encoder_feature = self._encoder_outputs_projection_layer(encoder_outputs)
         decoder_feature = self._decoder_hidden_projection_layer(decoder_state)
-        decoder_feature = decoder_feature.unsqueeze(1).expand(batch_size, l, self._dim)
+        decoder_feature = decoder_feature.unsqueeze(1).expand(batch_size, source_length, self._dim)
 
         features = encoder_feature + decoder_feature
         if self._use_coverage and coverage is not None:

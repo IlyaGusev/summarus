@@ -169,7 +169,7 @@ class PointerGeneratorNetwork(Model):
 
     def _prepare_output_projections(self,
                                     last_predictions: torch.Tensor,
-                                    state: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:  # pylint: disable=line-too-long
+                                    state: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         # shape: (group_size, max_input_sequence_length, encoder_output_dim)
         encoder_outputs = state["encoder_outputs"]
         # shape: (group_size, max_input_sequence_length)
@@ -216,15 +216,14 @@ class PointerGeneratorNetwork(Model):
         decoder_hidden = state["decoder_hidden"]
         decoder_context = state["decoder_context"]
 
-        decoder_state = torch.cat((decoder_hidden.view(-1, self._decoder_output_dim),
-                                   decoder_context.view(-1, self._decoder_output_dim)), 1)
+        decoder_state = torch.cat((decoder_hidden, decoder_context), 1)
         p_gen = self._p_gen_layer(torch.cat((attn_context, decoder_state, decoder_input), 1))
         p_gen = torch.sigmoid(p_gen)
 
         vocab_dist = F.softmax(output_projections, dim=-1)
 
         vocab_dist = vocab_dist * p_gen
-        attn_dist = attn_dist * (1 - p_gen)
+        attn_dist = attn_dist * (1.0 - p_gen)
         if extra_zeros.size(1) != 0:
             vocab_dist = torch.cat((vocab_dist, extra_zeros), 1)
         final_dist = vocab_dist.scatter_add(1, tokens, attn_dist)
@@ -238,7 +237,7 @@ class PointerGeneratorNetwork(Model):
                       target_tokens: Dict[str, torch.LongTensor] = None) -> Dict[str, torch.Tensor]:
         # shape: (batch_size, max_input_sequence_length)
         source_mask = state["source_mask"]
-        batch_size = source_mask.size()[0]
+        batch_size = source_mask.size(0)
 
         num_decoding_steps = self._max_decoding_steps
         if target_tokens:

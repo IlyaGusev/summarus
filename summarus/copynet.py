@@ -10,7 +10,7 @@ from allennlp.models.encoder_decoders.copynet_seq2seq import CopyNetSeq2Seq
 from allennlp.training.metrics import Metric
 
 
-logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+logger = logging.getLogger(__name__)
 
 
 @Model.register("custom_copynet_seq2seq")
