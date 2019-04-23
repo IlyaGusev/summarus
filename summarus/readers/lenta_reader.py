@@ -44,4 +44,6 @@ class LentaReader(SummarizationReader):
                 title, text = row[1], row[2]
                 if not title or not text:
                     continue
-                yield text.lower().replace("\xa0", " "), title.lower().replace("\xa0", " ")
+                text = text.lower().replace("\xa0", " ")
+                title = title.lower().replace("\xa0", " ")
+                yield text, title

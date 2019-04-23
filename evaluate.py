@@ -63,9 +63,12 @@ def evaluate(model_path, test_path, config_path, metric, is_multiple_ref, max_co
             decoded_words = output["predicted_tokens"]
             if not is_multiple_ref:
                 hyp = detokenize(" ".join(decoded_words)) if not is_subwords else "".join(decoded_words).replace("▁", " ")
-                if not hyp:
-                    hyp = "a"
+                if len(hyp.strip()) <= 1:
+                    hyp = "empty"
                     print("Empty hyp")
+                if len(target.strip()) <= 1:
+                    target = "empty"
+                    print("Empty target")
                 ref = [target]
             else:
                 if isinstance(target, list):

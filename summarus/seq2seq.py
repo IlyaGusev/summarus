@@ -43,7 +43,7 @@ class Seq2Seq(SimpleSeq2Seq):
             target_embedding_dim,
             scheduled_sampling_ratio
         )
-        assert not use_projection and not projection_dim or use_projection
+        use_projection = use_projection or projection_dim is not None
 
         self._tie_embeddings = tie_embeddings
 
