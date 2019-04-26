@@ -60,7 +60,7 @@ class PointerGeneratorNetwork(Model):
         self._attention = attention
         self._use_coverage = use_coverage
         self._coverage_loss_weight = coverage_loss_weight
-        self._eps = 1e-45
+        self._eps = 1e-31
 
         # Decoding
         self._scheduled_sampling_ratio = scheduled_sampling_ratio
