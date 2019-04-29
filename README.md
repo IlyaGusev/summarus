@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/IlyaGusev/summarus.svg?branch=master)](https://travis-ci.org/IlyaGusev/summarus)
 [![Code Climate](https://codeclimate.com/github/IlyaGusev/summarus/badges/gpa.svg)](https://codeclimate.com/github/IlyaGusev/summarus)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FIlyaGusev%2Fsummarus.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FIlyaGusev%2Fsummarus?ref=badge_shield)
 
 Summarization models
 
@@ -116,3 +117,7 @@ Script for model evaluation. The test dataset should have the same format as the
 | --report-every    | None    | print metrics every N'th step                             |
 | --config-path     | None    | custom path to config                                     |
 | --batch-size      | 32      | size of a batch with test examples to run simultaneously  |
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FIlyaGusev%2Fsummarus.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2FIlyaGusev%2Fsummarus?ref=badge_large)
