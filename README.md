@@ -107,12 +107,13 @@ You should use preprocess.py to generate a vocabulary based on the train dataset
 
 Script for model evaluation. The test dataset should have the same format as the train dataset.
 
-| Argument          | Default | Description                                               |
-|:------------------|:--------|:----------------------------------------------------------|
-| --test-path       |         | path to test dataset                                      |
-| --model-path      |         | path to directory with model's files                      |
-| --metric          | all     | what metric to evaluate, choices=("rouge", "bleu", "all") |
-| --max-count       | None    | how many test examples to consider                        |
-| --report-every    | None    | print metrics every N'th step                             |
-| --config-path     | None    | custom path to config                                     |
-| --batch-size      | 32      | size of a batch with test examples to run simultaneously  |
+| Argument             | Default | Description                                               |
+|:---------------------|:--------|:----------------------------------------------------------|
+| --test-path          |         | path to test dataset                                      |
+| --model-path         |         | path to directory with model's files                      |
+| --metric             | all     | what metric to evaluate, choices=("rouge", "bleu", "all") |
+| --max-count          | None    | how many test examples to consider                        |
+| --report-every       | None    | print metrics every N'th step                             |
+| --model-config-path  | None    | custom path to model config                               |
+| --reader-config-path | None    | path to custom reader config                              |
+| --batch-size         | 32      | size of a batch with test examples to run simultaneously  |
