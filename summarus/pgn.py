@@ -34,12 +34,10 @@ class PointerGeneratorNetwork(Model):
         super(PointerGeneratorNetwork, self).__init__(vocab)
 
         self._target_namespace = target_namespace
-        self._start_index = self.vocab.get_token_index(START_SYMBOL, self._target_namespace)
-        self._end_index = self.vocab.get_token_index(END_SYMBOL, self._target_namespace)
-        self._source_unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN)
-        self._target_unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN, self._target_namespace)
-        self._source_vocab_size = self.vocab.get_vocab_size()
-        self._target_vocab_size = self.vocab.get_vocab_size(self._target_namespace)
+        self._start_index = self.vocab.get_token_index(START_SYMBOL, target_namespace)
+        self._end_index = self.vocab.get_token_index(END_SYMBOL, target_namespace)
+        self._unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN, target_namespace)
+        self._vocab_size = self.vocab.get_vocab_size(target_namespace)
 
         # Encoder
         self._source_embedder = source_embedder
@@ -48,14 +46,17 @@ class PointerGeneratorNetwork(Model):
 
         # Decoder
         self._target_embedding_dim = target_embedding_dim or source_embedder.get_output_dim()
-        self._num_classes = self.vocab.get_vocab_size(self._target_namespace)
+        self._num_classes = self.vocab.get_vocab_size(target_namespace)
         self._target_embedder = Embedding(self._num_classes, self._target_embedding_dim)
+
         self._decoder_input_dim = self._encoder_output_dim + self._target_embedding_dim
         self._decoder_output_dim = self._encoder_output_dim
         self._decoder_cell = LSTMCell(self._decoder_input_dim, self._decoder_output_dim)
+
         self._projection_dim = projection_dim or self._source_embedder.get_output_dim()
         self._hidden_projection_layer = Linear(self._decoder_output_dim, self._projection_dim)
         self._output_projection_layer = Linear(self._projection_dim, self._num_classes)
+
         self._p_gen_layer = Linear(self._decoder_output_dim * 3 + self._decoder_input_dim, 1)
         self._attention = attention
         self._use_coverage = use_coverage
@@ -107,32 +108,42 @@ class PointerGeneratorNetwork(Model):
 
         tokens = source_tokens
         token_ids = source_token_ids.long()
+
+        # Concat target tokens if exist
         if target_tokens is not None:
             tokens = torch.cat((tokens, target_tokens), 1)
             token_ids = torch.cat((token_ids, target_token_ids.long()), 1)
 
-        is_unk = torch.eq(tokens, self._target_unk_index).long()
+        is_unk = torch.eq(tokens, self._unk_index).long()
+        # Create tensor with ids of unknown tokens only.
+        # Those ids are batch-local.
         unk_only = token_ids * is_unk
 
+        # Recalculate batch-local ids to range [1, count_of_unique_unk_tokens].
+        # All known tokens have zero id.
         unk_token_nums = token_ids.new_zeros((batch_size, token_ids.size(1)))
         for i in range(batch_size):
             unique = torch.unique(unk_only[i, :], return_inverse=True, sorted=True)[1]
             unk_token_nums[i, :] = unique
 
-        tokens = tokens - tokens * is_unk + (self._target_vocab_size - 1) * is_unk + unk_token_nums
+        # Replace DEFAULT_OOV_TOKEN id with new batch-local ids starting from vocab_size
+        # For example, if vocabulary size is 50000, the first unique unknown token will have 50000 index,
+        # the second will have 50001 index and so on.
+        tokens = tokens - tokens * is_unk + (self._vocab_size - 1) * is_unk + unk_token_nums
 
         modified_target_tokens = None
         modified_source_tokens = tokens
         if target_tokens is not None:
-            for i in range(batch_size):
-                max_source_num = torch.max(tokens[i, :source_max_length])
-                max_source_num = max(self._target_vocab_size - 1, max_source_num)
-                unk_target_tokens_mask = torch.gt(tokens[i, :], max_source_num).long()
-                zero_target_unk = tokens[i, :] - tokens[i, :] * unk_target_tokens_mask
-                tokens[i, :] = zero_target_unk + self._target_unk_index * unk_target_tokens_mask
+            # Remove target unknown tokens that do not exist in source tokens
+            max_source_num = torch.max(tokens[:, :source_max_length], dim=1)[0]
+            vocab_size = max_source_num.new_full((1,), self._vocab_size-1)
+            max_source_num = torch.max(max_source_num, other=vocab_size).unsqueeze(1).expand((-1, tokens.size(1)))
+            unk_target_tokens_mask = torch.gt(tokens, max_source_num).long()
+            tokens = tokens - tokens * unk_target_tokens_mask + self._unk_index * unk_target_tokens_mask
             modified_target_tokens = tokens[:, source_max_length:]
             modified_source_tokens = tokens[:, :source_max_length]
 
+        # Count unique unknown source tokens to create enough zeros for final distribution
         source_unk_count = torch.max(unk_token_nums[:, :source_max_length])
         extra_zeros = tokens.new_zeros((batch_size, source_unk_count), dtype=torch.float32)
         return extra_zeros, modified_source_tokens, modified_target_tokens
@@ -179,8 +190,8 @@ class PointerGeneratorNetwork(Model):
         # shape: (group_size, decoder_output_dim)
         decoder_context = state["decoder_context"]
 
-        is_unk = (last_predictions >= self._target_vocab_size).long()
-        last_predictions_fixed = last_predictions - last_predictions * is_unk + self._target_unk_index * is_unk
+        is_unk = (last_predictions >= self._vocab_size).long()
+        last_predictions_fixed = last_predictions - last_predictions * is_unk + self._unk_index * is_unk
         embedded_input = self._target_embedder.forward(last_predictions_fixed)
 
         if not self._use_coverage:
@@ -193,9 +204,7 @@ class PointerGeneratorNetwork(Model):
         attn_context = util.weighted_sum(encoder_outputs, attn_scores)
         decoder_input = torch.cat((attn_context, embedded_input), -1)
 
-        decoder_hidden, decoder_context = self._decoder_cell(
-            decoder_input,
-            (decoder_hidden, decoder_context))
+        decoder_hidden, decoder_context = self._decoder_cell(decoder_input, (decoder_hidden, decoder_context))
 
         output_projections = self._output_projection_layer(self._hidden_projection_layer(decoder_hidden))
 
@@ -246,12 +255,12 @@ class PointerGeneratorNetwork(Model):
             _, target_sequence_length = targets.size()
             num_decoding_steps = target_sequence_length - 1
 
-        last_predictions = source_mask.new_full((batch_size,), fill_value=self._start_index)
+        if self._use_coverage:
+            coverage_loss = source_mask.new_zeros(1, dtype=torch.float32)
 
+        last_predictions = source_mask.new_full((batch_size,), fill_value=self._start_index)
         step_proba: List[torch.Tensor] = []
         step_predictions: List[torch.Tensor] = []
-        if self._use_coverage:
-            coverage_loss = None
         for timestep in range(num_decoding_steps):
             if self.training and torch.rand(1).item() < self._scheduled_sampling_ratio:
                 input_choices = last_predictions
@@ -261,19 +270,17 @@ class PointerGeneratorNetwork(Model):
                 input_choices = targets[:, timestep]
 
             if self._use_coverage:
-                coverage = state["coverage"]
+                old_coverage = state["coverage"]
 
             output_projections, state = self._prepare_output_projections(input_choices, state)
             final_dist = self._get_final_dist(state, output_projections)
             step_proba.append(final_dist)
+            last_predictions = torch.max(final_dist, 1)[1]
+            step_predictions.append(last_predictions.unsqueeze(1))
 
             if self._use_coverage:
-                step_coverage_loss = torch.sum(torch.min(state["attn_scores"], coverage), 1)
-                coverage_loss = coverage_loss + step_coverage_loss if coverage_loss is not None else step_coverage_loss
-
-            _, predicted_classes = torch.max(final_dist, 1)
-            last_predictions = predicted_classes
-            step_predictions.append(last_predictions.unsqueeze(1))
+                step_coverage_loss = torch.sum(torch.min(state["attn_scores"], old_coverage), 1)
+                coverage_loss = coverage_loss + step_coverage_loss
 
         # shape: (batch_size, num_decoding_steps)
         predictions = torch.cat(step_predictions, 1)
@@ -333,31 +340,39 @@ class PointerGeneratorNetwork(Model):
         if not isinstance(predicted_indices, np.ndarray):
             predicted_indices = predicted_indices.detach().cpu().numpy()
         all_predicted_tokens = []
-        for (indices, metadata), source_to_target in zip(zip(predicted_indices, output_dict["metadata"]), output_dict["source_to_target"]):
-            # Beam search gives us the top k results for each source sentence in the batch
-            # but we just want the single best.
-            if len(indices.shape) > 1:
-                indices = indices[0]
-            indices = list(indices)
-            # Collect indices till the first end_symbol
-            if self._end_index in indices:
-                indices = indices[:indices.index(self._end_index)]
-            predicted_tokens = []
-
-            unk_tokens = list()
-            for i, t in enumerate(source_to_target):
-                if t == self._target_unk_index:
-                    token = metadata["source_tokens"][i]
-                    if token not in unk_tokens:
-                        unk_tokens.append(token)
-
-            for x in indices:
-                if x < self._target_vocab_size:
-                    token = self.vocab.get_token_from_index(x, namespace=self._target_namespace)
-                else:
-                    unk_number = x - self._target_vocab_size
-                    token = unk_tokens[unk_number]
-                predicted_tokens.append(token)
-            all_predicted_tokens.append(predicted_tokens)
+        all_meta = output_dict["metadata"]
+        all_source_to_target = output_dict["source_to_target"]
+        for (indices, metadata), source_to_target in zip(zip(predicted_indices, all_meta), all_source_to_target):
+            all_predicted_tokens.append(self._decode_sample(indices, metadata, source_to_target))
         output_dict["predicted_tokens"] = all_predicted_tokens
         return output_dict
+
+    def _decode_sample(self, indices, metadata, source_to_target):
+        predicted_tokens = []
+        # Beam search gives us the top k results for each source sentence in the batch
+        # but we just want the single best.
+        if len(indices.shape) > 1:
+            indices = indices[0]
+        indices = list(indices)
+        # Collect indices till the first end_symbol
+        if self._end_index in indices:
+            indices = indices[:indices.index(self._end_index)]
+        # Get all unknown tokens from source
+        original_source_tokens = metadata["source_tokens"]
+        unk_tokens = list()
+        for i, token_vocab_index in enumerate(source_to_target):
+            if token_vocab_index != self._unk_index:
+                continue
+            token = original_source_tokens[i]
+            if token in unk_tokens:
+                continue
+            unk_tokens.append(token)
+
+        for token_vocab_index in indices:
+            if token_vocab_index < self._vocab_size:
+                token = self.vocab.get_token_from_index(token_vocab_index, namespace=self._target_namespace)
+            else:
+                unk_number = token_vocab_index - self._vocab_size
+                token = unk_tokens[unk_number]
+            predicted_tokens.append(token)
+        return predicted_tokens
