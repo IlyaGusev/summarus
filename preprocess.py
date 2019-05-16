@@ -9,7 +9,7 @@ from summarus.readers import *
 
 
 def preprocess(train_path, vocabulary_path, config_path):
-    assert os.path.isfile(train_path), "Train dataset file does not exist"
+    assert os.path.isfile(train_path) or os.path.isdir(train_path), "Train dataset file does not exist"
     assert os.path.isfile(config_path), "Config file does not exist"
 
     params = Params.from_file(config_path)

@@ -45,13 +45,15 @@ def get_file_names_by_urls(cnn_tokenized_dir, dm_tokenized_dir, urls_file_path):
             assert file_found, "File not found in tokenized dir: " + file_name
 
 
-def get_article_and_abstract(story_file, encoding="utf-8") -> Tuple[str, str]:
+def get_article_and_abstract(story_file, encoding="utf-8", fix_period=True) -> Tuple[str, str]:
     article_lines = []
     abstract = []
     next_is_highlight = False
     with open(story_file, "r", encoding=encoding) as r:
         for line in r:
-            line = fix_missing_period(line.strip().lower())
+            line = line.strip().lower()
+            if fix_period:
+                line = fix_missing_period(line)
             if not line:
                 continue
             elif line.startswith("@highlight"):

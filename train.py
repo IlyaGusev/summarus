@@ -20,7 +20,7 @@ def set_seed(seed):
         torch.cuda.manual_seed_all(seed)
 
 
-def train(model_path, train_path, val_path, seed, vocabulary_path=None, config_path=None):
+def train(model_path, train_path, val_path, seed, vocabulary_path=None, config_path=None, pretrained_path=None):
     assert os.path.isdir(model_path), "Model directory does not exist"
     set_seed(seed)
 
@@ -37,8 +37,11 @@ def train(model_path, train_path, val_path, seed, vocabulary_path=None, config_p
     train_dataset = reader.read(train_path)
     val_dataset = reader.read(val_path) if val_path else None
 
-    model_params = params.pop("model")
-    model = Model.from_params(model_params, vocab=vocabulary)
+    if not pretrained_path:
+        model_params = params.pop("model")
+        model = Model.from_params(model_params, vocab=vocabulary)
+    else:
+        model = Model.load(params, pretrained_path)
     print(model)
     print("Trainable params count: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
@@ -57,6 +60,7 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=1048596)
     parser.add_argument('--vocabulary-path', default=None)
     parser.add_argument('--config-path', default=None)
+    parser.add_argument('--pretrained-path', default=None)
     args = parser.parse_args()
     train(**vars(args))
 
