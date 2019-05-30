@@ -30,8 +30,8 @@ pip install -r requirements.txt
 * seq2seq-words-25m: temporaly invalid
 * seq2seq-bpe-25m: temporaly invalid
 * copynet-words-25m: https://www.dropbox.com/s/52v50z3ne6qyuv5/ria_25kk_words_copynet.tar.gz
-* pgn-coverage-words-25m: soon
-* pgn-coverage-subwords-24m: soon
+* pgn-coverage-words-25m: https://www.dropbox.com/s/8ifuemqzeganziv/ria_25kk_words_pgn.tar.gz
+* pgn-coverage-subwords-24m: https://www.dropbox.com/s/5qmk4c5noq0wnax/ria_24kk_subwords_pgn_coverage.tar.gz
 * copynet-bpe-43m: https://www.dropbox.com/s/w67dcqf1mlv66uy/ria_43kk_subwords_copynet_short_context.tar.gz
 
 ### Results
