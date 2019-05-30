@@ -24,11 +24,11 @@ pip install -r requirements.txt
 * Lenta splits: https://www.dropbox.com/s/v9i2nh12a4deuqj/lenta.tar.gz
 
 ### Models
-* seq2seq-bpe-5m: temporaly invalid
+* seq2seq-bpe-5m: temporary invalid
 * copynet-words-10m: https://www.dropbox.com/s/sed8yh0yq4a7bmt/ria_10kk_words_copynet.tar.gz
 * copynet-bpe-10m: https://www.dropbox.com/s/v71akkarrtcjlxm/ria_10kk_subwords_copynet.tar.gz
-* seq2seq-words-25m: temporaly invalid
-* seq2seq-bpe-25m: temporaly invalid
+* seq2seq-words-25m: temporary invalid
+* seq2seq-bpe-25m: temporary invalid
 * copynet-words-25m: https://www.dropbox.com/s/52v50z3ne6qyuv5/ria_25kk_words_copynet.tar.gz
 * pgn-coverage-words-25m: https://www.dropbox.com/s/8ifuemqzeganziv/ria_25kk_words_pgn.tar.gz
 * pgn-coverage-subwords-24m: https://www.dropbox.com/s/5qmk4c5noq0wnax/ria_24kk_subwords_pgn_coverage.tar.gz
