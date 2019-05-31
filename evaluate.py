@@ -51,8 +51,15 @@ def run_baseline(batch, baseline):
     for source in sources:
         source_sentences = nltk.sent_tokenize(source)
         if baseline.startswith("lead"):
-            n = int(baseline.replace("lead", ""))
-            hyp = " ".join(source_sentences[:n]).strip()
+            skip = 0
+            if "skip" in baseline:
+                skip = int(baseline.split("skip")[-1])
+                n = int(baseline.split("skip")[0].replace("lead", ""))
+            else:
+                n = int(baseline.replace("lead", ""))
+            if len(source_sentences) == 1:
+                skip = 0
+            hyp = " ".join(source_sentences[skip:skip+n]).strip()
         else:
             assert False
         hyps.append(hyp)
@@ -177,7 +184,7 @@ def evaluate(test_path, batch_size, metric,
                 print("Empty ref")
             if isinstance(hyp, str) and len(hyp) <= 1:
                 hyp = "some content"
-                print("Empty hyp")
+                print("Empty hyp. Ref: ", ref)
 
             refs.append(ref)
             hyps.append(hyp)
@@ -199,7 +206,8 @@ if __name__ == "__main__":
     parser.add_argument('--test-path', type=str, required=True)
     parser.add_argument('--model-config-path', type=str, default=None)
     parser.add_argument('--reader-config-path', type=str, default=None)
-    parser.add_argument('--baseline', choices=("lead1", "lead2", "lead3", "lead4", "lead5", "lead6"), default=None)
+    parser.add_argument('--baseline', choices=("lead1", "lead1skip1", "lead2", "lead3",
+                                               "lead4", "lead5", "lead6"), default=None)
     parser.add_argument('--metric', choices=("rouge", "legacy_rouge", "bleu", "all"), default="all")
     parser.add_argument('--is-multiple-ref', action='store_true')
     parser.add_argument('--max-count', type=int, default=None)
