@@ -17,6 +17,9 @@ pip install -r requirements.txt
 
 ## Headline generation
 
+* Paper: [Importance of Copying Mechanism for News Headline Generation](http://www.dialog-21.ru/media/4599/gusevio-152.pdf)
+* Presentation: [Importance of Copying Mechanism for News Headline Generation](https://www.dropbox.com/s/agtvl3umlc6vci5/ICMNHG-Presentation.pdf)
+
 ### Dataset splits
 * RIA original dataset: https://github.com/RossiyaSegodnya/ria_news_dataset
 * RIA splits: https://www.dropbox.com/s/rermx1r8lx9u7nl/ria.tar.gz
