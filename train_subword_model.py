@@ -1,29 +1,21 @@
 import os
-import json
 import tempfile
 import argparse
 
-from bs4 import BeautifulSoup
 from sentencepiece import SentencePieceTrainer as sp_trainer
+from allennlp.common.params import Params
 
-
-def parse_ria_json(path):
-    with open(path, "r", encoding="utf-8") as r:
-        for line in r:
-            data = json.loads(line.strip())
-            title = data["title"]
-            text = data["text"]
-            clean_text = BeautifulSoup(text, 'html.parser').text
-            if not clean_text or not title:
-                continue
-            yield clean_text, title
+from summarus.readers import *
    
 
-def train_subwords(train_path, model_path, model_type, vocab_size):
+def train_subwords(train_path, model_path, model_type, vocab_size, config_path):
     temp = tempfile.NamedTemporaryFile(mode="w", delete=False)
-    for text, title in parse_ria_json(train_path):
+    params = Params.from_file(config_path)
+    reader_params = params.pop("reader", default=Params({}))
+    reader = SummarizationReader.from_params(reader_params)
+    for text, summary in reader.parse_set(train_path):
         temp.write(text + "\n")
-        temp.write(title + "\n")
+        temp.write(summary + "\n")
     temp.close()
     if not os.path.exists(model_path):
         os.makedirs(model_path)
@@ -42,5 +34,6 @@ if __name__ == "__main__":
     parser.add_argument('--model-path', type=str, required=True)
     parser.add_argument('--model-type', type=str, default="bpe")
     parser.add_argument('--vocab-size', type=int, default=50000)
+    parser.add_argument('--config-path', type=str, required=True)
     args = parser.parse_args()
     train_subwords(**vars(args))

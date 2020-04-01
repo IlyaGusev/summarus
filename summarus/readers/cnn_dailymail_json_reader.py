@@ -1,30 +1,26 @@
 import json
 from typing import Dict
 
-from bs4 import BeautifulSoup
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.data.tokenizers.tokenizer import Tokenizer
 from allennlp.data.token_indexers.token_indexer import TokenIndexer
-from allennlp.data.tokenizers import WordTokenizer
-from allennlp.data.tokenizers.word_splitter import SimpleWordSplitter
 
 from summarus.readers.summarization_reader import SummarizationReader
 
 
-def parse_ria_json(path):
+def parse_cnn_dm_json(path):
     with open(path, "r", encoding="utf-8") as r:
         for line in r:
             data = json.loads(line.strip())
-            title = data["title"]
             text = data["text"]
-            clean_text = BeautifulSoup(text, 'html.parser').text.replace('\xa0', ' ').replace('\n', ' ')
-            if not clean_text or not title:
+            abstract = data["abstract"]
+            if not text or not abstract:
                 continue
-            yield clean_text, title
+            yield text, abstract
 
 
-@DatasetReader.register("ria")
-class RIAReader(SummarizationReader):
+@DatasetReader.register("cnn_dailymail_json")
+class CNNDailyMailJSONReader(SummarizationReader):
     def __init__(self,
                  tokenizer: Tokenizer = None,
                  source_token_indexers: Dict[str, TokenIndexer] = None,
@@ -35,8 +31,6 @@ class RIAReader(SummarizationReader):
                  target_namespace: str = "target_tokens",
                  save_copy_fields: bool = False,
                  save_pgn_fields: bool = False) -> None:
-        if not tokenizer:
-            tokenizer = WordTokenizer(word_splitter=SimpleWordSplitter())
         super().__init__(
             tokenizer=tokenizer,
             source_token_indexers=source_token_indexers,
@@ -50,4 +44,5 @@ class RIAReader(SummarizationReader):
         )
 
     def parse_set(self, path):
-        return parse_ria_json(path)
+        return parse_cnn_dm_json(path)
+
