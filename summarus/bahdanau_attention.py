@@ -7,7 +7,7 @@ from allennlp.nn.util import masked_softmax
 
 @Attention.register("bahdanau")
 class BahdanauAttention(Attention):
-    def __init__(self, dim: int, normalize: bool = True, use_coverage: bool = False):
+    def __init__(self, dim: int, normalize: bool = True, use_coverage: bool = False, init_coverage_layer: bool = True):
         super(BahdanauAttention, self).__init__(normalize)
 
         self._dim = dim
@@ -16,7 +16,7 @@ class BahdanauAttention(Attention):
         self._decoder_hidden_projection_layer = Linear(dim, dim, bias=False)
         self._encoder_outputs_projection_layer = Linear(dim, dim, bias=False)
         self._v = Linear(dim, 1, bias=False)
-        if use_coverage:
+        if use_coverage or init_coverage_layer:
             self._coverage_projection_layer = Linear(1, dim, bias=False)
 
     def forward(self,
