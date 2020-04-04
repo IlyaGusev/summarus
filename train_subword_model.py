@@ -4,6 +4,7 @@ import argparse
 
 from sentencepiece import SentencePieceTrainer as sp_trainer
 from allennlp.common.params import Params
+from allennlp.data.dataset_readers import DatasetReader
 
 from summarus.readers import *
    
@@ -12,7 +13,7 @@ def train_subwords(train_path, model_path, model_type, vocab_size, config_path):
     temp = tempfile.NamedTemporaryFile(mode="w", delete=False)
     params = Params.from_file(config_path)
     reader_params = params.pop("reader", default=Params({}))
-    reader = SummarizationReader.from_params(reader_params)
+    reader = DatasetReader.from_params(reader_params)
     for text, summary in reader.parse_set(train_path):
         temp.write(text + "\n")
         temp.write(summary + "\n")
