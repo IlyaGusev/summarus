@@ -297,6 +297,7 @@ class PointerGeneratorNetwork(Model):
             loss = self._get_loss(proba, state["target_tokens"], self._eps)
             if self._use_coverage:
                 coverage_loss = torch.mean(coverage_loss / num_decoding_steps)
+                print("Coverage loss: ", coverage_loss.item())
                 loss = loss + self._coverage_loss_weight * coverage_loss
             output_dict["loss"] = loss
 
