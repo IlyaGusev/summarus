@@ -298,7 +298,7 @@ class PointerGeneratorNetwork(Model):
             if self._use_coverage:
                 coverage_loss = torch.mean(coverage_loss / num_decoding_steps)
                 print("Coverage loss: ", coverage_loss.item())
-                loss = loss + self._coverage_loss_weight * coverage_loss
+                loss = loss + self._coverage_loss_weight * coverage_loss - 1.0
             output_dict["loss"] = loss
 
         return output_dict
