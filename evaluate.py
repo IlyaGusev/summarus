@@ -71,7 +71,7 @@ def get_model_runner(model_path, reader, model_config_path=None):
     params = Params.from_file(config_path)
     device = 0 if torch.cuda.is_available() else -1
     model = Model.load(params, model_path, cuda_device=device)
-    model.training = False
+    model.eval()
     predictor = Seq2SeqPredictor(model, reader)
     print(model)
     print("Trainable params count: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
