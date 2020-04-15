@@ -1,0 +1,12 @@
+onmt_preprocess -train_src ../models/gazeta_onmt_v2/data/train.text.txt \
+  -train_tgt ../models/gazeta_onmt_v2/data/train.summary.txt \
+  -valid_src ../models/gazeta_onmt_v2/data/val.text.txt \
+  -valid_tgt ../models/gazeta_onmt_v2/data/val.summary.txt \
+  -save_data ../models/gazeta_onmt_v2/data/processed \
+  -src_seq_length 10000 \
+  -tgt_seq_length 10000 \
+  -src_seq_length_trunc 800 \
+  -tgt_seq_length_trunc 200 \
+  -dynamic_dict \
+  -share_vocab \
+  -shard_size 10000

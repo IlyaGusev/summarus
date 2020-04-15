@@ -1,0 +1,15 @@
+onmt_translate -gpu 0 \
+               -batch_size 20 \
+               -beam_size 5 \
+               -model ../models/gazeta_onmt/model_step_40000.pt \
+               -src ../models/gazeta_onmt/data/test.text.txt \
+               -output ../models/gazeta_onmt/data/test.predicted_summary.txt \
+               -min_length 10 \
+               -verbose \
+               -stepwise_penalty \
+               -coverage_penalty summary \
+               -beta 5 \
+               -length_penalty wu \
+               -alpha 0.9 \
+               -block_ngram_repeat 3 \
+               -ignore_when_blocking "." "</t>" "<t>"
