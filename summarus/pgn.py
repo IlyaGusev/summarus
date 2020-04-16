@@ -205,7 +205,10 @@ class PointerGeneratorNetwork(Model):
         coverage = state.get("coverage", None)
 
         def get_attention_context(decoder_hidden_inner):
-            attention_scores = self._attention(decoder_hidden_inner, encoder_outputs, source_mask, coverage)
+            if coverage is None:
+                attention_scores = self._attention(decoder_hidden_inner, encoder_outputs, source_mask)
+            else:
+                attention_scores = self._attention(decoder_hidden_inner, encoder_outputs, source_mask, coverage)
             attention_context = util.weighted_sum(encoder_outputs, attention_scores)
             return attention_scores, attention_context
 
