@@ -9,6 +9,7 @@ from allennlp.predictors.seq2seq import Seq2SeqPredictor
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 import torch
 import nltk
+import razdel
 from rouge import Rouge
 
 from summarus import *
@@ -155,7 +156,8 @@ def calc_metrics(refs, hyps, metric):
 def evaluate(test_path, batch_size, metric,
              max_count, report_every, is_multiple_ref=False,
              model_path=None, model_config_path=None, baseline=None,
-             reader_config_path=None, detokenize_after=False):
+             reader_config_path=None, detokenize_after=False,
+             tokenize_after=False):
     reader_params = get_reader_params(reader_config_path, model_config_path, model_path)
     is_subwords = "tokenizer" in reader_params and reader_params["tokenizer"]["type"] == "subword"
     reader = DatasetReader.from_params(reader_params)
@@ -179,6 +181,9 @@ def evaluate(test_path, batch_size, metric,
             if detokenize_after:
                 hyp = detokenize(hyp)
                 ref = detokenize(ref)
+            if tokenize_after:
+                hyp = " ".join([token.text for token in razdel.tokenize(hyp)])
+                ref = " ".join([token.text for token in razdel.tokenize(ref)])
             if isinstance(ref, str) and len(ref) <= 1:
                 ref = "some content"
                 print("Empty ref")
@@ -214,6 +219,7 @@ if __name__ == "__main__":
     parser.add_argument('--report-every', type=int, default=100)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--detokenize-after', action='store_true')
+    parser.add_argument('--tokenize-after', action='store_true')
 
     args = parser.parse_args()
     main(**vars(args))
