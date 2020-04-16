@@ -183,6 +183,7 @@ def evaluate(test_path, batch_size, metric,
                 ref = detokenize(ref)
             if tokenize_after:
                 hyp = " ".join([token.text for token in razdel.tokenize(hyp)])
+                hyp = hyp.replace("@ @ UNKNOWN @ @", "@@UNKNOWN@@")
                 ref = " ".join([token.text for token in razdel.tokenize(ref)])
             if isinstance(ref, str) and len(ref) <= 1:
                 ref = "some content"
