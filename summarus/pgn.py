@@ -225,7 +225,7 @@ class PointerGeneratorNetwork(Model):
 
         output_projections = self._output_projection_layer(projection)
         if self._use_coverage:
-            state["coverage"] += attn_scores
+            state["coverage"] = coverage + attn_scores
         state["decoder_input"] = decoder_input
         state["decoder_hidden"] = decoder_hidden
         state["decoder_context"] = decoder_context
