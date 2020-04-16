@@ -30,7 +30,8 @@ class PointerGeneratorNetwork(Model):
                  scheduled_sampling_ratio: float = 0.,
                  projection_dim: int = None,
                  use_coverage: bool = False,
-                 coverage_loss_weight: float = None) -> None:
+                 coverage_loss_weight: float = None,
+                 embed_attn_to_output: bool = False) -> None:
         super(PointerGeneratorNetwork, self).__init__(vocab)
 
         self._target_namespace = target_namespace
@@ -54,7 +55,8 @@ class PointerGeneratorNetwork(Model):
         self._decoder_cell = LSTMCell(self._decoder_input_dim, self._decoder_output_dim)
 
         self._projection_dim = projection_dim or self._source_embedder.get_output_dim()
-        self._hidden_projection_layer = Linear(self._decoder_output_dim, self._projection_dim)
+        hidden_projection_dim = self._decoder_output_dim if not embed_attn_to_output else self._decoder_output_dim * 2
+        self._hidden_projection_layer = Linear(hidden_projection_dim, self._projection_dim)
         self._output_projection_layer = Linear(self._projection_dim, self._num_classes)
 
         self._p_gen_layer = Linear(self._decoder_output_dim * 3 + self._decoder_input_dim, 1)
@@ -63,6 +65,7 @@ class PointerGeneratorNetwork(Model):
         self._coverage_loss_weight = coverage_loss_weight
         self._coverage_loss = None
         self._eps = 1e-31
+        self._embed_attn_to_output = embed_attn_to_output
 
         # Decoding
         self._scheduled_sampling_ratio = scheduled_sampling_ratio
@@ -175,6 +178,8 @@ class PointerGeneratorNetwork(Model):
 
         encoder_outputs = state["encoder_outputs"]
         state["decoder_context"] = encoder_outputs.new_zeros(batch_size, self._decoder_output_dim)
+        if self._embed_attn_to_output:
+            state["attn_context"] = encoder_outputs.new_zeros(encoder_outputs.size(0), encoder_outputs.size(2))
         if self._use_coverage:
             state["coverage"] = encoder_outputs.new_zeros(batch_size, encoder_outputs.size(1))
         return state
@@ -190,25 +195,34 @@ class PointerGeneratorNetwork(Model):
         decoder_hidden = state["decoder_hidden"]
         # shape: (group_size, decoder_output_dim)
         decoder_context = state["decoder_context"]
+        # shape: (group_size, decoder_output_dim)
+        attn_context = state.get("attn_context", None)
 
         is_unk = (last_predictions >= self._vocab_size).long()
         last_predictions_fixed = last_predictions - last_predictions * is_unk + self._unk_index * is_unk
-        embedded_input = self._target_embedder.forward(last_predictions_fixed)
+        embedded_input = self._target_embedder(last_predictions_fixed)
 
-        if not self._use_coverage:
-            attn_scores = self._attention.forward(decoder_hidden, encoder_outputs, source_mask)
+        coverage = state.get("coverage", None)
+
+        def get_attention_context(decoder_hidden_inner):
+            attention_scores = self._attention(decoder_hidden_inner, encoder_outputs, source_mask, coverage)
+            attention_context = util.weighted_sum(encoder_outputs, attention_scores)
+            return attention_scores, attention_context
+
+        if not self._embed_attn_to_output:
+            attn_scores, attn_context = get_attention_context(decoder_hidden)
+            decoder_input = torch.cat((attn_context, embedded_input), -1)
+            decoder_hidden, decoder_context = self._decoder_cell(decoder_input, (decoder_hidden, decoder_context))
+            projection = self._hidden_projection_layer(decoder_hidden)
         else:
-            coverage = state["coverage"]
-            attn_scores = self._attention.forward(decoder_hidden, encoder_outputs, source_mask, coverage)
-            coverage = coverage + attn_scores
-            state["coverage"] = coverage
-        attn_context = util.weighted_sum(encoder_outputs, attn_scores)
-        decoder_input = torch.cat((attn_context, embedded_input), -1)
+            decoder_input = torch.cat((attn_context, embedded_input), -1)
+            decoder_hidden, decoder_context = self._decoder_cell(decoder_input, (decoder_hidden, decoder_context))
+            attn_scores, attn_context = get_attention_context(decoder_hidden)
+            projection = self._hidden_projection_layer(torch.cat((attn_context, decoder_hidden), -1))
 
-        decoder_hidden, decoder_context = self._decoder_cell(decoder_input, (decoder_hidden, decoder_context))
-
-        output_projections = self._output_projection_layer(self._hidden_projection_layer(decoder_hidden))
-
+        output_projections = self._output_projection_layer(projection)
+        if self._use_coverage:
+            state["coverage"] += attn_scores
         state["decoder_input"] = decoder_input
         state["decoder_hidden"] = decoder_hidden
         state["decoder_context"] = decoder_context
