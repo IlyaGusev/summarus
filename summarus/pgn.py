@@ -64,6 +64,7 @@ class PointerGeneratorNetwork(Model):
         self._use_coverage = use_coverage
         self._coverage_loss_weight = coverage_loss_weight
         self._coverage_loss = None
+        self._coverage_iterations = 0
         self._eps = 1e-31
         self._embed_attn_to_output = embed_attn_to_output
 
@@ -315,7 +316,9 @@ class PointerGeneratorNetwork(Model):
             loss = self._get_loss(proba, state["target_tokens"], self._eps)
             if self._use_coverage:
                 coverage_loss = torch.mean(coverage_loss / num_decoding_steps)
-                self._coverage_loss = coverage_loss.item()
+                self._coverage_iterations += 1
+                n = self._coverage_iterations
+                self._coverage_loss = (coverage_loss.item() + self._coverage_loss * (n-1)) / n
                 loss = loss + self._coverage_loss_weight * (coverage_loss - 1.0)
             output_dict["loss"] = loss
 
