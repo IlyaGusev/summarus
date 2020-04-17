@@ -400,4 +400,7 @@ class PointerGeneratorNetwork(Model):
         return predicted_tokens
 
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
+        if reset:
+            self._coverage_loss = 0.0
+            self._coverage_iterations = 0
         return {"coverage_loss": self._coverage_loss} if self._coverage_loss is not None else {}
