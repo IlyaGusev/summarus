@@ -63,7 +63,7 @@ class PointerGeneratorNetwork(Model):
         self._attention = attention
         self._use_coverage = use_coverage
         self._coverage_loss_weight = coverage_loss_weight
-        self._coverage_loss = None
+        self._coverage_loss = 0.0
         self._coverage_iterations = 0
         self._eps = 1e-31
         self._embed_attn_to_output = embed_attn_to_output
