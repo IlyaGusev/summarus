@@ -76,7 +76,7 @@ class PointerGeneratorNetwork(Model):
     def forward(self,
                 source_tokens: Dict[str, torch.LongTensor],
                 source_token_ids: torch.Tensor,
-                source_to_target: torch.Tensor,
+                source_to_target: torch.LongTensor,
                 target_tokens: Dict[str, torch.LongTensor] = None,
                 target_token_ids: torch.Tensor = None,
                 metadata=None) -> Dict[str, torch.Tensor]:

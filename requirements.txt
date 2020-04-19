@@ -1,5 +1,5 @@
 numpy >= 1.12.1
-torch >= 1.0.0
+torch >= 1.2.0
 nltk >= 3.4
 razdel >= 0.4.0
 beautifulsoup4 == 4.4.1
