@@ -2,7 +2,7 @@ numpy >= 1.12.1
 torch >= 1.0.0
 nltk >= 3.4
 razdel >= 0.4.0
-beautifulsoup4 => 4.4.1
+beautifulsoup4 == 4.4.1
 sentencepiece == 0.1.85
 allennlp == 0.9.0
 rouge == 0.3.1
