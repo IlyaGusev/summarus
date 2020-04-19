@@ -12,8 +12,6 @@ from allennlp.data.tokenizers import Token
 from allennlp.data.fields import TextField, ArrayField, MetadataField, NamespaceSwappingField
 from allennlp.data.tokenizers.word_splitter import SimpleWordSplitter
 
-from summarus.subword_tokenizer import SubwordTokenizer
-
 
 class SummarizationReader(DatasetReader):
     def __init__(self,

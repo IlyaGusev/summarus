@@ -1,9 +1,9 @@
 onmt_translate -gpu 0 \
                -batch_size 20 \
                -beam_size 5 \
-               -model ../models/gazeta_onmt/model_step_40000.pt \
-               -src ../models/gazeta_onmt/data/test.text.txt \
-               -output ../models/gazeta_onmt/data/test.predicted_summary.txt \
+               -model ../models/gazeta_onmt_v2/model_step_30000.pt \
+               -src ../models/gazeta_onmt_v2/data/test.text.txt \
+               -output ../models/gazeta_onmt_v2/data/test.predicted_summary.txt \
                -min_length 10 \
                -verbose \
                -stepwise_penalty \

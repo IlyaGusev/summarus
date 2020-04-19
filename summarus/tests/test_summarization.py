@@ -21,51 +21,65 @@ class TestSummarizationModel(unittest.TestCase):
         torch.manual_seed(seed)
         np.random.seed(seed)
         torch.backends.cudnn.set_flags(True, False, True, True)
-        cls.params = []
+        cls.params = {}
         for file_name in os.listdir(TEST_CONFIG_DIR):
             if not file_name.endswith(".json"):
                 continue
             config_path = os.path.join(TEST_CONFIG_DIR, file_name)
-            cls.params.append(Params.from_file(config_path))
+            cls.params[file_name] = Params.from_file(config_path)
 
-    def test_models(self):
-        for params in self.params:
-            reader_params = params.duplicate().pop("reader", default=Params({}))
-            if reader_params["type"] == "cnn_dailymail":
-                reader_params["cnn_tokenized_dir"] = TEST_STORIES_DIR
-                dataset_file = TEST_URLS_FILE
-            elif reader_params["type"] == "ria":
-                dataset_file = RIA_EXAMPLE_FILE
-            else:
-                assert False
+    def _test_model(self, file_name):
+        params = self.params[file_name].duplicate()
+        reader_params = params.duplicate().pop("reader", default=Params({}))
+        if reader_params["type"] == "cnn_dailymail":
+            reader_params["cnn_tokenized_dir"] = TEST_STORIES_DIR
+            dataset_file = TEST_URLS_FILE
+        elif reader_params["type"] == "ria":
+            dataset_file = RIA_EXAMPLE_FILE
+        else:
+            assert False
 
-            reader = DatasetReader.from_params(reader_params)
-            tokenizer = reader._tokenizer
-            dataset = reader.read(dataset_file)
-            vocabulary_params = params.pop("vocabulary", default=Params({}))
-            vocabulary = Vocabulary.from_params(vocabulary_params, instances=dataset)
+        reader = DatasetReader.from_params(reader_params)
+        tokenizer = reader._tokenizer
+        dataset = reader.read(dataset_file)
+        vocabulary_params = params.pop("vocabulary", default=Params({}))
+        vocabulary = Vocabulary.from_params(vocabulary_params, instances=dataset)
 
-            model_params = params.pop("model")
-            model = Model.from_params(model_params, vocab=vocabulary)
-            print(model)
-            print("Trainable params count: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
+        model_params = params.pop("model")
+        model = Model.from_params(model_params, vocab=vocabulary)
+        print(model)
+        print("Trainable params count: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
-            iterator = DataIterator.from_params(params.pop('iterator'))
-            iterator.index_with(vocabulary)
-            trainer = Trainer.from_params(model, None, iterator,
-                                          dataset, None, params.pop('trainer'))
-            trainer.train()
+        iterator = DataIterator.from_params(params.pop('iterator'))
+        iterator.index_with(vocabulary)
+        trainer = Trainer.from_params(model, None, iterator,
+                                      dataset, None, params.pop('trainer'))
+        trainer.train()
 
-            model.training = False
-            predictor = Seq2SeqPredictor(model, reader)
-            for article, reference_sents in reader.parse_set(dataset_file):
-                ref_words = [token.text for token in tokenizer.tokenize(reference_sents)]
-                decoded_words = predictor.predict(article)["predicted_tokens"]
-                self.assertGreaterEqual(len(decoded_words), len(ref_words))
-                while DEFAULT_OOV_TOKEN in decoded_words:
-                    unk_index = decoded_words.index(DEFAULT_OOV_TOKEN)
-                    decoded_words.pop(unk_index)
-                    if unk_index < len(ref_words):
-                        ref_words.pop(unk_index)
-                self.assertListEqual(decoded_words[:len(ref_words)], ref_words)
+        model.eval()
+        predictor = Seq2SeqPredictor(model, reader)
+        for article, reference_sents in reader.parse_set(dataset_file):
+            ref_words = [token.text for token in tokenizer.tokenize(reference_sents)]
+            decoded_words = predictor.predict(article)["predicted_tokens"]
+            self.assertGreaterEqual(len(decoded_words), len(ref_words))
+            unk_count = 0
+            while DEFAULT_OOV_TOKEN in decoded_words:
+                unk_index = decoded_words.index(DEFAULT_OOV_TOKEN)
+                decoded_words.pop(unk_index)
+                unk_count += 1
+                if unk_index < len(ref_words):
+                    ref_words.pop(unk_index)
+            self.assertLess(unk_count, 5)
+            self.assertListEqual(decoded_words[:len(ref_words)], ref_words)
 
+    def test_ria_pgn(self):
+        self._test_model("ria_pgn.json")
+
+    def test_cnn_dm_seq2seq(self):
+        self._test_model("cnn_dm_seq2seq.json")
+
+    def test_cnn_dm_pgn(self):
+        self._test_model("cnn_dm_seq2seq.json")
+
+    def test_cnn_dm_copynet(self):
+        self._test_model("cnn_dm_copynet.json")

@@ -15,7 +15,7 @@ onmt_train -save_model ../models/gazeta_onmt_v2/model \
   -decay_method noam \
   -label_smoothing 0.1 \
   -adam_beta2 0.998 \
-  -batch_size 4096 \
+  -batch_size 8192 \
   -batch_type tokens \
   -normalization tokens \
   -max_generator_batches 2 \
