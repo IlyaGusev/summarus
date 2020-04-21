@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn.modules.linear import Linear
 from torch.nn.modules.rnn import LSTMCell
+from torch.nn.functional import relu
 
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.data.vocabulary import Vocabulary, DEFAULT_OOV_TOKEN
@@ -30,6 +31,7 @@ class PointerGeneratorNetwork(Model):
                  scheduled_sampling_ratio: float = 0.,
                  projection_dim: int = None,
                  use_coverage: bool = False,
+                 coverage_shift: float = 0.,
                  coverage_loss_weight: float = None,
                  embed_attn_to_output: bool = False) -> None:
         super(PointerGeneratorNetwork, self).__init__(vocab)
@@ -63,10 +65,15 @@ class PointerGeneratorNetwork(Model):
         self._attention = attention
         self._use_coverage = use_coverage
         self._coverage_loss_weight = coverage_loss_weight
-        self._coverage_loss = 0.0
-        self._coverage_iterations = 0
         self._eps = 1e-31
         self._embed_attn_to_output = embed_attn_to_output
+        self._coverage_shift = coverage_shift
+
+        # Metrics
+        self._p_gen_sum = 0.0
+        self._p_gen_iterations = 0
+        self._coverage_loss_sum = 0.0
+        self._coverage_iterations = 0
 
         # Decoding
         self._scheduled_sampling_ratio = scheduled_sampling_ratio
@@ -247,6 +254,8 @@ class PointerGeneratorNetwork(Model):
         decoder_state = torch.cat((decoder_hidden, decoder_context), 1)
         p_gen = self._p_gen_layer(torch.cat((attn_context, decoder_state, decoder_input), 1))
         p_gen = torch.sigmoid(p_gen)
+        self._p_gen_sum += torch.mean(p_gen).item()
+        self._p_gen_iterations += 1
 
         vocab_dist = F.softmax(output_projections, dim=-1)
 
@@ -316,10 +325,10 @@ class PointerGeneratorNetwork(Model):
             loss = self._get_loss(proba, state["target_tokens"], self._eps)
             if self._use_coverage:
                 coverage_loss = torch.mean(coverage_loss / num_decoding_steps)
+                self._coverage_loss_sum += coverage_loss.item()
                 self._coverage_iterations += 1
-                n = self._coverage_iterations
-                self._coverage_loss = (coverage_loss.item() + self._coverage_loss * (n-1)) / n
-                loss = loss + self._coverage_loss_weight * (coverage_loss - 1.0)
+                modified_coverage_loss = relu(coverage_loss - self._coverage_shift) + self._coverage_shift - 1.0
+                loss = loss + self._coverage_loss_weight * modified_coverage_loss
             output_dict["loss"] = loss
 
         return output_dict
@@ -402,7 +411,12 @@ class PointerGeneratorNetwork(Model):
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
         if not self._use_coverage:
             return {}
+        avg_coverage_loss = self._coverage_loss_sum / self._coverage_iterations if self._coverage_iterations != 0 else 0.0
+        avg_p_gen = self._p_gen_sum / self._p_gen_iterations if self._p_gen_iterations != 0 else 0.0
+        metrics = {"coverage_loss": avg_coverage_loss, "p_gen": avg_p_gen}
         if reset:
-            self._coverage_loss = 0.0
+            self._p_gen_sum = 0.0
+            self._p_gen_iterations = 0
+            self._coverage_loss_sum = 0.0
             self._coverage_iterations = 0
-        return {"coverage_loss": self._coverage_loss}
+        return metrics

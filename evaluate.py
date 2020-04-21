@@ -9,10 +9,12 @@ from allennlp.predictors.seq2seq import Seq2SeqPredictor
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 import torch
 import nltk
+from nltk.translate.bleu_score import corpus_bleu
 import razdel
 from rouge import Rouge
 
 from summarus import *
+from summarus.util.meteor import Meteor
 
 
 def detokenize(text):
@@ -99,65 +101,30 @@ def get_reader_params(reader_config_path=None, model_config_path=None, model_pat
     return reader_params
 
 
-def calc_legacy_rouge(refs, hyps, directory="eval"):
-    from pyrouge import Rouge155
-    r = Rouge155()
-    system_dir = os.path.join(directory, 'hyp')
-    model_dir = os.path.join(directory, 'ref')
-    if not os.path.isdir(system_dir):
-        os.makedirs(system_dir)
-    if not os.path.isdir(model_dir):
-        os.makedirs(model_dir)
-    r.system_dir = system_dir
-    r.model_dir = model_dir
-    r.system_filename_pattern = '(\d+)_decoded.txt'
-    r.model_filename_pattern = '#ID#_reference.txt'
-    for i, (ref, hyp) in enumerate(zip(refs, hyps)):
-        hyp_file_path = os.path.join(r.system_dir, "%06d_decoded.txt" % i)
-        with open(hyp_file_path, "w") as w:
-            hyp_sentences = hyp.split(" s_s ")
-            w.write("\n".join(hyp_sentences))
-        ref_file_path = os.path.join(r.model_dir, "%06d_reference.txt" % i)
-        with open(ref_file_path, "w") as w:
-            ref_sentences = ref.split(" s_s ")
-            w.write("\n".join(ref_sentences))
-    output = r.convert_and_evaluate()
-    result = r.output_to_dict(output)
-    log_str = ""
-    for x in ["1","2","l"]:
-        log_str += "\nROUGE-%s:\n" % x
-        for y in ["f_score", "recall", "precision"]:
-            key = "rouge_%s_%s" % (x,y)
-            key_cb = key + "_cb"
-            key_ce = key + "_ce"
-            val = result[key]
-            val_cb = result[key_cb]
-            val_ce = result[key_ce]
-            log_str += "%s: %.4f with confidence interval (%.4f, %.4f)\n" % (key, val, val_cb, val_ce)
-    return log_str
-
-
-def calc_metrics(refs, hyps, metric):
+def calc_metrics(refs, hyps, metric, meteor_jar=None):
     print("Count:", len(hyps))
     print("Ref:", refs[-1])
     print("Hyp:", hyps[-1])
 
+    many_refs = [[r] if r is not list else r for r in refs]
     if metric in ("bleu", "all"):
-        from nltk.translate.bleu_score import corpus_bleu
-        print("BLEU: ", corpus_bleu([[r] if r is not list else r for r in refs], hyps))
+        print("BLEU: ", corpus_bleu(many_refs, hyps))
     if metric == "legacy_rouge":
         print(calc_legacy_rouge(refs, hyps))
     if metric in ("rouge", "all"):
         rouge = Rouge()
         scores = rouge.get_scores(hyps, refs, avg=True)
         print("ROUGE: ", scores)
+    if metric in ("meteor", "all") and meteor_jar is not None and os.path.exists(meteor_jar):
+        meteor = Meteor(meteor_jar, language="ru")
+        print("METEOR: ", meteor.compute_score(hyps, many_refs))
 
 
 def evaluate(test_path, batch_size, metric,
              max_count, report_every, is_multiple_ref=False,
              model_path=None, model_config_path=None, baseline=None,
              reader_config_path=None, detokenize_after=False,
-             tokenize_after=False):
+             tokenize_after=False, meteor_jar=None):
     reader_params = get_reader_params(reader_config_path, model_config_path, model_path)
     is_subwords = "tokenizer" in reader_params and reader_params["tokenizer"]["type"] == "subword"
     reader = DatasetReader.from_params(reader_params)
@@ -195,15 +162,10 @@ def evaluate(test_path, batch_size, metric,
             refs.append(ref)
             hyps.append(hyp)
             if len(hyps) % report_every == 0:
-                calc_metrics(refs, hyps, metric)
+                calc_metrics(refs, hyps, metric, meteor_jar)
             if max_count and len(hyps) >= max_count:
                 break
-    calc_metrics(refs, hyps, metric)
-
-
-def main(**kwargs):
-    assert os.path.isdir(kwargs['model_path'])
-    evaluate(**kwargs)
+    calc_metrics(refs, hyps, metric, meteor_jar)
 
 
 if __name__ == "__main__":
@@ -214,13 +176,15 @@ if __name__ == "__main__":
     parser.add_argument('--reader-config-path', type=str, default=None)
     parser.add_argument('--baseline', choices=("lead1", "lead1skip1", "lead2", "lead3",
                                                "lead4", "lead5", "lead6"), default=None)
-    parser.add_argument('--metric', choices=("rouge", "legacy_rouge", "bleu", "all"), default="all")
+    parser.add_argument('--metric', choices=("rouge", "bleu", "meteor", "all"), default="all")
     parser.add_argument('--is-multiple-ref', action='store_true')
     parser.add_argument('--max-count', type=int, default=None)
     parser.add_argument('--report-every', type=int, default=100)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--detokenize-after', action='store_true')
     parser.add_argument('--tokenize-after', action='store_true')
+    parser.add_argument('--meteor-jar', type=str, default=None)
 
     args = parser.parse_args()
-    main(**vars(args))
+    assert os.path.isdir(args.model_path)
+    evaluate(**vars(args))
