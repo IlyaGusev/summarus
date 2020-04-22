@@ -2,6 +2,7 @@ import os
 import argparse
 import re
 from typing import Dict
+from collections import Counter
 
 from allennlp.common.params import Params
 from allennlp.models.model import Model
@@ -101,6 +102,19 @@ def get_reader_params(reader_config_path=None, model_config_path=None, model_pat
     return reader_params
 
 
+def calc_duplicate_n_grams_rate(documents):
+    all_ngrams_count = Counter()
+    duplicate_ngrams_count = Counter()
+    for doc in documents:
+        words = doc.split(" ")
+        for n in range(1, 5):
+            ngrams = [tuple(words[i:i+n]) for i in range(len(words)-n+1)]
+            unique_ngrams = set(ngrams)
+            all_ngrams_count[n] += len(ngrams)
+            duplicate_ngrams_count[n] += len(ngrams) - len(unique_ngrams)
+    return {n: duplicate_ngrams_count[n]/all_ngrams_count[n] for n in range(1, 5)}
+
+
 def calc_metrics(refs, hyps, metric, meteor_jar=None):
     print("Count:", len(hyps))
     print("Ref:", refs[-1])
@@ -118,6 +132,8 @@ def calc_metrics(refs, hyps, metric, meteor_jar=None):
     if metric in ("meteor", "all") and meteor_jar is not None and os.path.exists(meteor_jar):
         meteor = Meteor(meteor_jar, language="ru")
         print("METEOR: ", meteor.compute_score(hyps, many_refs))
+    if metric in ("duplicate_bigrams", "all"):
+        print("Duplicate bigrams: ", calc_duplicate_n_grams_rate(hyps)[2] * 100)
 
 
 def evaluate(test_path, batch_size, metric,
