@@ -19,6 +19,9 @@ from allennlp.nn import util
 
 @Model.register("pgn")
 class PointerGeneratorNetwork(Model):
+    """
+    Based on https://arxiv.org/pdf/1704.04368.pdf
+    """
     def __init__(self,
                  vocab: Vocabulary,
                  source_embedder: TextFieldEmbedder,

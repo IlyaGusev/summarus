@@ -19,7 +19,8 @@ class LentaReader(SummarizationReader):
                  separate_namespaces: bool = False,
                  target_namespace: str = "target_tokens",
                  save_copy_fields: bool = False,
-                 save_pgn_fields: bool = False) -> None:
+                 save_pgn_fields: bool = False,
+                 lowercase: bool = True) -> None:
         super().__init__(
             tokenizer=tokenizer,
             source_token_indexers=source_token_indexers,
@@ -29,7 +30,8 @@ class LentaReader(SummarizationReader):
             separate_namespaces=separate_namespaces,
             target_namespace=target_namespace,
             save_copy_fields=save_copy_fields,
-            save_pgn_fields=save_pgn_fields
+            save_pgn_fields=save_pgn_fields,
+            lowercase=lowercase
         )
 
     def parse_set(self, path):
@@ -44,6 +46,6 @@ class LentaReader(SummarizationReader):
                 title, text = row[1], row[2]
                 if not title or not text:
                     continue
-                text = text.lower().replace("\xa0", " ")
-                title = title.lower().replace("\xa0", " ")
+                text = text.replace("\xa0", " ")
+                title = title.replace("\xa0", " ")
                 yield text, title

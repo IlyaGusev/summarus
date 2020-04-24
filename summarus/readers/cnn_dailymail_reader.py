@@ -81,7 +81,8 @@ class CNNDailyMailReader(SummarizationReader):
                  separate_namespaces: bool = False,
                  target_namespace: str = "target_tokens",
                  save_copy_fields: bool = False,
-                 save_pgn_fields: bool = False) -> None:
+                 save_pgn_fields: bool = False,
+                 lowercase: bool = True) -> None:
         super().__init__(
             tokenizer=tokenizer,
             source_token_indexers=source_token_indexers,
@@ -91,7 +92,8 @@ class CNNDailyMailReader(SummarizationReader):
             separate_namespaces=separate_namespaces,
             target_namespace=target_namespace,
             save_copy_fields=save_copy_fields,
-            save_pgn_fields=save_pgn_fields
+            save_pgn_fields=save_pgn_fields,
+            lowercase=lowercase
         )
 
         self._cnn_tokenized_dir = cnn_tokenized_dir

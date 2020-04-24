@@ -1,6 +1,7 @@
 # Python wrapper for METEOR implementation, by Xinlei Chen
 # Acknowledge Michael Denkowski for the generous discussion and help
 # Based on https://github.com/tylin/coco-caption/blob/master/pycocoevalcap/meteor/meteor.py
+# Modified by Ilya Gusev
 
 import subprocess
 import threading
@@ -34,7 +35,7 @@ class Meteor:
 
     def _stat(self, hypothesis_str, reference_list):
         # SCORE ||| reference 1 words ||| reference n words ||| hypothesis words
-        hypothesis_str = hypothesis_str.replace('|||','').replace('  ',' ')
+        hypothesis_str = hypothesis_str.replace('|||', '').replace('  ', ' ')
         score_line = ' ||| '.join(('SCORE', ' ||| '.join(reference_list), hypothesis_str))
         self.meteor_p.stdin.write('{}\n'.format(score_line))
         return self.meteor_p.stdout.readline().strip()

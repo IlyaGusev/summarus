@@ -37,15 +37,11 @@ class CustomAutoRegressiveSeqDecoder(SeqDecoder):
 
         self._vocab = vocab
 
-        # Decodes the sequence of encoded hidden states into e new sequence of hidden states.
         self._decoder_net = decoder_net
         self._max_decoding_steps = max_decoding_steps
         self._target_namespace = target_namespace
         self._label_smoothing_ratio = label_smoothing_ratio
 
-        # At prediction time, we use a beam search to find the most likely sequence of target tokens.
-        # We need the start symbol to provide as the input at the first timestep of decoding, and
-        # end symbol as a way to indicate the end of the decoded sequence.
         self._start_index = self._vocab.get_token_index(START_SYMBOL, self._target_namespace)
         self._end_index = self._vocab.get_token_index(END_SYMBOL, self._target_namespace)
         self._beam_search = BeamSearch(self._end_index, max_steps=max_decoding_steps, beam_size=beam_size)
@@ -55,8 +51,6 @@ class CustomAutoRegressiveSeqDecoder(SeqDecoder):
         if self.target_embedder.get_output_dim() != self._decoder_net.target_embedding_dim:
             raise ConfigurationError("Target Embedder output_dim doesn't match decoder module's input.")
 
-        # We project the hidden state from the decoder into the output vocabulary space
-        # in order to get log probabilities of each target token, at each time step.
         self._output_projection_layer = Linear(self._decoder_net.get_output_dim(), target_vocab_size)
 
         if tie_output_embedding:
@@ -64,10 +58,8 @@ class CustomAutoRegressiveSeqDecoder(SeqDecoder):
                 raise ConfigurationError("Can't tie embeddings with output linear layer, due to shape mismatch")
             self._output_projection_layer.weight = self.target_embedder.weight
 
-        # These metrics will be updated during training and validation
         self._tensor_based_metric = tensor_based_metric
         self._token_based_metric = token_based_metric
-
         self._scheduled_sampling_ratio = scheduled_sampling_ratio
 
     def _forward_beam_search(self, state: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -86,14 +78,6 @@ class CustomAutoRegressiveSeqDecoder(SeqDecoder):
 
     def _forward_loss(self, state: Dict[str, torch.Tensor],
                       target_tokens: Dict[str, torch.LongTensor]) -> Dict[str, torch.Tensor]:
-        """
-        Make forward pass during training or do greedy search during prediction.
-
-        Notes
-        -----
-        We really only use the predictions from the method to test that beam search
-        with a beam size of 1 gives the same results.
-        """
         # shape: (batch_size, max_input_sequence_length, encoder_output_dim)
         encoder_outputs = state["encoder_outputs"]
 
@@ -248,31 +232,6 @@ class CustomAutoRegressiveSeqDecoder(SeqDecoder):
                   logits: torch.LongTensor,
                   targets: torch.LongTensor,
                   target_mask: torch.LongTensor) -> torch.Tensor:
-        """
-        Compute loss.
-
-        Takes logits (unnormalized outputs from the decoder) of size (batch_size,
-        num_decoding_steps, num_classes), target indices of size (batch_size, num_decoding_steps+1)
-        and corresponding masks of size (batch_size, num_decoding_steps+1) steps and computes cross
-        entropy loss while taking the mask into account.
-
-        The length of ``targets`` is expected to be greater than that of ``logits`` because the
-        decoder does not need to compute the output corresponding to the last timestep of
-        ``targets``. This method aligns the inputs appropriately to compute the loss.
-
-        During training, we want the logit corresponding to timestep i to be similar to the target
-        token from timestep i + 1. That is, the targets should be shifted by one timestep for
-        appropriate comparison.  Consider a single example where the target has 3 words, and
-        padding is to 7 tokens.
-           The complete sequence would correspond to <S> w1  w2  w3  <E> <P> <P>
-           and the mask would be                     1   1   1   1   1   0   0
-           and let the logits be                     l1  l2  l3  l4  l5  l6
-        We actually need to compare:
-           the sequence           w1  w2  w3  <E> <P> <P>
-           with masks             1   1   1   1   0   0
-           against                l1  l2  l3  l4  l5  l6
-           (where the input was)  <S> w1  w2  w3  <E> <P>
-        """
         # shape: (batch_size, num_decoding_steps)
         relevant_targets = targets[:, 1:].contiguous()
 
@@ -290,36 +249,6 @@ class CustomAutoRegressiveSeqDecoder(SeqDecoder):
     def take_step(self,
                   last_predictions: torch.Tensor,
                   state: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
-        """
-        Take a decoding step. This is called by the beam search class.
-
-        Parameters
-        ----------
-        last_predictions : ``torch.Tensor``
-            A tensor of shape ``(group_size,)``, which gives the indices of the predictions
-            during the last time step.
-        state : ``Dict[str, torch.Tensor]``
-            A dictionary of tensors that contain the current state information
-            needed to predict the next step, which includes the encoder outputs,
-            the source mask, and the decoder hidden state and context. Each of these
-            tensors has shape ``(group_size, *)``, where ``*`` can be any other number
-            of dimensions.
-
-        Returns
-        -------
-        Tuple[torch.Tensor, Dict[str, torch.Tensor]]
-            A tuple of ``(log_probabilities, updated_state)``, where ``log_probabilities``
-            is a tensor of shape ``(group_size, num_classes)`` containing the predicted
-            log probability of each class for the next step, for each item in the group,
-            while ``updated_state`` is a dictionary of tensors containing the encoder outputs,
-            source mask, and updated decoder hidden state and context.
-
-        Notes
-        -----
-            We treat the inputs as a batch, even though ``group_size`` is not necessarily
-            equal to ``batch_size``, since the group may contain multiple states
-            for each source sentence in the batch.
-        """
         # shape: (group_size, num_classes)
         output_projections, state = self._prepare_output_projections(last_predictions, state)
 
@@ -373,10 +302,6 @@ class CustomAutoRegressiveSeqDecoder(SeqDecoder):
 
     @overrides
     def post_process(self, output_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        """
-        This method trims the output predictions to the first end symbol, replaces indices with
-        corresponding tokens, and adds a field called ``predicted_tokens`` to the ``output_dict``.
-        """
         predicted_indices = output_dict["predictions"]
         if not isinstance(predicted_indices, numpy.ndarray):
             predicted_indices = predicted_indices.detach().cpu().numpy()

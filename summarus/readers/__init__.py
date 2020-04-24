@@ -5,3 +5,5 @@ from summarus.readers.lenta_reader import LentaReader
 from summarus.readers.ria_reader import RIAReader
 from summarus.readers.gazeta_reader import GazetaReader
 from summarus.readers.cnn_dailymail_json_reader import CNNDailyMailJSONReader
+from summarus.readers.summarization_sentence_tagger_reader import SummarizationSentencesTaggerReader
+from summarus.readers.gazeta_sentence_tagger_reader import GazetaSentencesTaggerReader
