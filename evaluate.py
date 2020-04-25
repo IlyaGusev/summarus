@@ -104,17 +104,23 @@ def run_abs_model(predictor, batch):
     return targets, hyps
 
 
-def run_ext_model(predictor, batch, border=-1.0):
+def run_ext_model(predictor, batch, top_n=3, border=None):
     outputs = predictor.predict_batch_json(batch)
     targets = [b.get("target") for b in batch]
     hyps = []
     for sample, output in zip(batch, outputs):
+        sentences = sample["source_sentences"]
         proba = output["predicted_tags"]
-        predicted_tags = [prob > border for prob in proba]
-        if sum(predicted_tags) == 0:
-            best_proba = max(proba)
-            predicted_tags = [p == best_proba for i, p in enumerate(proba)]
-        hyp = [sentence for sentence, tag in zip(sample["source_sentences"], predicted_tags) if tag == 1]
+        if top_n is not None:
+            indices = [i for i, p, in sorted(enumerate(proba), key=lambda x: -x[1])[:top_n]]
+            indices.sort()
+            hyp = [sentences[i] for i in indices]
+        elif border is not None:
+            predicted_tags = [prob > border for prob in proba]
+            if sum(predicted_tags) == 0:
+                best_proba = max(proba)
+                predicted_tags = [p == best_proba for i, p in enumerate(proba)]
+                hyp = [sentence for sentence, tag in zip(sentences, predicted_tags) if tag == 1]
         hyp = " ".join(hyp).strip()
         hyps.append(hyp)
     return targets, hyps
