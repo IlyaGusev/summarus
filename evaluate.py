@@ -105,22 +105,24 @@ def run_abs_model(predictor, batch):
 
 
 def run_ext_model(predictor, batch, top_n=3, border=None):
+    assert top_n is not None or border is not None
     outputs = predictor.predict_batch_json(batch)
     targets = [b.get("target") for b in batch]
     hyps = []
     for sample, output in zip(batch, outputs):
         sentences = sample["source_sentences"]
-        proba = output["predicted_tags"]
-        if top_n is not None:
-            indices = [i for i, p, in sorted(enumerate(proba), key=lambda x: -x[1])[:top_n]]
-            indices.sort()
-            hyp = [sentences[i] for i in indices]
+        proba = torch.sigmoid(torch.Tensor(output["predicted_tags"])).tolist()
+        sorted_proba = list(sorted(enumerate(proba), key=lambda x: -x[1]))
+        if top_n is not None and border is None:
+            indices = sorted_proba[:top_n]
         elif border is not None:
-            predicted_tags = [prob > border for prob in proba]
-            if sum(predicted_tags) == 0:
-                best_proba = max(proba)
-                predicted_tags = [p == best_proba for i, p in enumerate(proba)]
-                hyp = [sentence for sentence, tag in zip(sentences, predicted_tags) if tag == 1]
+            indices = [(i, p) for i, p in sorted_proba if p > border]
+            if top_n is not None:
+                indices = indices[:top_n]
+            if not indices:
+                indices = sorted_proba[:1]
+        indices.sort()
+        hyp = [sentences[i] for i, _ in indices]
         hyp = " ".join(hyp).strip()
         hyps.append(hyp)
     return targets, hyps
