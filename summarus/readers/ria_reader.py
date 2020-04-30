@@ -5,8 +5,6 @@ from bs4 import BeautifulSoup
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.data.tokenizers.tokenizer import Tokenizer
 from allennlp.data.token_indexers.token_indexer import TokenIndexer
-from allennlp.data.tokenizers import WordTokenizer
-from allennlp.data.tokenizers.word_splitter import SimpleWordSplitter
 
 from summarus.readers.summarization_reader import SummarizationReader
 
@@ -36,8 +34,6 @@ class RIAReader(SummarizationReader):
                  save_copy_fields: bool = False,
                  save_pgn_fields: bool = False,
                  lowercase: bool = False) -> None:
-        if not tokenizer:
-            tokenizer = WordTokenizer(word_splitter=SimpleWordSplitter())
         super().__init__(
             tokenizer=tokenizer,
             source_token_indexers=source_token_indexers,

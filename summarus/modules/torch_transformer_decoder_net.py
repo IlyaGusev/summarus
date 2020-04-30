@@ -5,9 +5,8 @@ import torch
 from torch.autograd import Variable
 from torch.nn.modules.transformer import TransformerDecoder, TransformerDecoderLayer, LayerNorm, Dropout, xavier_uniform_
 
-# from allennlp.modules.seq2seq_encoders.bidirectional_language_model_transformer import PositionalEncoding
 from allennlp.nn.util import add_positional_features
-from allennlp.modules.seq2seq_decoders.decoder_net import DecoderNet
+from allennlp_models.seq2seq.decoder_net import DecoderNet
 
 
 @DecoderNet.register("torch_transformer_decoder_net")

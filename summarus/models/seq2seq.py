@@ -7,7 +7,7 @@ from allennlp.data.vocabulary import Vocabulary
 from allennlp.modules import TextFieldEmbedder, Seq2SeqEncoder
 from allennlp.models.model import Model
 from allennlp.modules import Attention
-from allennlp.models.encoder_decoders.simple_seq2seq import SimpleSeq2Seq
+from allennlp_models.seq2seq.simple_seq2seq_model import SimpleSeq2Seq
 
 
 @Model.register("seq2seq")

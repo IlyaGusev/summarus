@@ -5,7 +5,7 @@ import numpy
 import torch
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.params import Params
-from allennlp.data.iterators.data_iterator import DataIterator
+from allennlp.data.dataloader import DataLoader
 from allennlp.training.trainer import Trainer
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.models.model import Model
@@ -45,10 +45,13 @@ def train(model_path, train_path, val_path, seed, vocabulary_path=None, config_p
     print(model)
     print("Trainable params count: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
-    iterator = DataIterator.from_params(params.pop('iterator'))
-    iterator.index_with(vocabulary)
-    trainer = Trainer.from_params(model, model_path, iterator,
-                                  train_dataset, val_dataset, params.pop('trainer'))
+    train_dataset.index_with(vocabulary)
+    train_loader = DataLoader.from_params(params.pop("train_data_loader"), dataset=train_dataset)
+    val_dataset.index_with(vocabulary)
+    val_loader = DataLoader.from_params(params.pop("val_data_loader"), dataset=val_dataset)
+
+    trainer = Trainer.from_params(params.pop('trainer'), model=model, serialization_dir=model_path,
+                                  data_loader=train_loader, validation_data_loader=val_loader)
     trainer.train()
 
 

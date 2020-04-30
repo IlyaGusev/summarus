@@ -6,7 +6,7 @@ import torch
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.models.model import Model
 from allennlp.modules import Attention, TextFieldEmbedder, Seq2SeqEncoder
-from allennlp.models.encoder_decoders.copynet_seq2seq import CopyNetSeq2Seq
+from allennlp_models.seq2seq.copynet.copynet_seq2seq_model import CopyNetSeq2Seq
 from allennlp.training.metrics import Metric
 
 

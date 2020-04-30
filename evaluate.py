@@ -5,7 +5,7 @@ from typing import Dict
 
 from allennlp.common.params import Params
 from allennlp.models.model import Model
-from allennlp.predictors.seq2seq import Seq2SeqPredictor
+from allennlp_models.seq2seq import Seq2SeqPredictor
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 import torch
 import nltk

@@ -4,8 +4,6 @@ from typing import Dict
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.data.tokenizers.tokenizer import Tokenizer
 from allennlp.data.token_indexers.token_indexer import TokenIndexer
-from allennlp.data.tokenizers import WordTokenizer
-from allennlp.data.tokenizers.word_splitter import SimpleWordSplitter
 
 from summarus.readers.summarization_reader import SummarizationReader
 
@@ -33,7 +31,9 @@ class GazetaReader(SummarizationReader):
                  target_namespace: str = "target_tokens",
                  save_copy_fields: bool = False,
                  save_pgn_fields: bool = False,
-                 lowercase: bool = False) -> None:
+                 lowercase: bool = False,
+                 cache_directory: str = None,
+                 lazy: bool = True) -> None:
         super().__init__(
             tokenizer=tokenizer,
             source_token_indexers=source_token_indexers,
@@ -44,7 +44,9 @@ class GazetaReader(SummarizationReader):
             target_namespace=target_namespace,
             save_copy_fields=save_copy_fields,
             save_pgn_fields=save_pgn_fields,
-            lowercase=lowercase
+            lowercase=lowercase,
+            cache_directory=cache_directory,
+            lazy=lazy
         )
 
     def parse_set(self, path):

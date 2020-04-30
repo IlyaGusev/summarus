@@ -1,5 +1,7 @@
 from typing import Dict, Tuple, List
+
 import numpy as np
+from overrides import overrides
 
 import torch
 import torch.nn.functional as F
@@ -53,7 +55,7 @@ class PointerGeneratorNetwork(Model):
         # Decoder
         self._target_embedding_dim = target_embedding_dim or source_embedder.get_output_dim()
         self._num_classes = self.vocab.get_vocab_size(target_namespace)
-        self._target_embedder = Embedding(self._num_classes, self._target_embedding_dim)
+        self._target_embedder = Embedding(self._target_embedding_dim, self._num_classes)
 
         self._decoder_input_dim = self._encoder_output_dim + self._target_embedding_dim
         self._decoder_output_dim = self._encoder_output_dim
@@ -83,15 +85,16 @@ class PointerGeneratorNetwork(Model):
         self._max_decoding_steps = max_decoding_steps
         self._beam_search = BeamSearch(self._end_index, max_steps=max_decoding_steps, beam_size=beam_size or 1)
 
+    @overrides
     def forward(self,
-                source_tokens: Dict[str, torch.LongTensor],
+                source_tokens: Dict[str, Dict[str, torch.LongTensor]],
                 source_token_ids: torch.Tensor,
                 source_to_target: torch.LongTensor,
-                target_tokens: Dict[str, torch.LongTensor] = None,
+                target_tokens: Dict[str, Dict[str, torch.LongTensor]] = None,
                 target_token_ids: torch.Tensor = None,
                 metadata=None) -> Dict[str, torch.Tensor]:
         state = self._encode(source_tokens)
-        target_tokens_tensor = target_tokens["tokens"].long() if target_tokens else None
+        target_tokens_tensor = target_tokens["tokens"]["tokens"].long() if target_tokens else None
         extra_zeros, modified_source_tokens, modified_target_tokens = self._prepare(
             source_to_target, source_token_ids, target_tokens_tensor, target_token_ids)
 
@@ -163,7 +166,7 @@ class PointerGeneratorNetwork(Model):
         extra_zeros = tokens.new_zeros((batch_size, source_unk_count), dtype=torch.float32)
         return extra_zeros, modified_source_tokens, modified_target_tokens
 
-    def _encode(self, source_tokens: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def _encode(self, source_tokens: Dict[str, Dict[str, torch.LongTensor]]) -> Dict[str, torch.Tensor]:
         # shape: (batch_size, max_input_sequence_length, encoder_input_dim)
         embedded_input = self._source_embedder.forward(source_tokens)
         # shape: (batch_size, max_input_sequence_length)
@@ -274,7 +277,7 @@ class PointerGeneratorNetwork(Model):
 
     def _forward_loop(self,
                       state: Dict[str, torch.Tensor],
-                      target_tokens: Dict[str, torch.LongTensor] = None) -> Dict[str, torch.Tensor]:
+                      target_tokens: Dict[str, Dict[str, torch.LongTensor]] = None) -> Dict[str, torch.Tensor]:
         # shape: (batch_size, max_input_sequence_length)
         source_mask = state["source_mask"]
         batch_size = source_mask.size(0)
@@ -282,7 +285,7 @@ class PointerGeneratorNetwork(Model):
         num_decoding_steps = self._max_decoding_steps
         if target_tokens:
             # shape: (batch_size, max_target_sequence_length)
-            targets = target_tokens["tokens"]
+            targets = target_tokens["tokens"]["tokens"]
             _, target_sequence_length = targets.size()
             num_decoding_steps = target_sequence_length - 1
 
@@ -347,7 +350,7 @@ class PointerGeneratorNetwork(Model):
 
     def _forward_beam_search(self, state: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         batch_size = state["source_mask"].size()[0]
-        start_predictions = state["source_mask"].new_full((batch_size,), fill_value=self._start_index)
+        start_predictions = state["tokens"].new_full((batch_size,), fill_value=self._start_index)
 
         # shape (all_top_k_predictions): (batch_size, beam_size, num_decoding_steps)
         # shape (log_probabilities): (batch_size, beam_size)
@@ -369,7 +372,8 @@ class PointerGeneratorNetwork(Model):
         log_probabilities = torch.log(final_dist + self._eps)
         return log_probabilities, state
 
-    def decode(self, output_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    @overrides
+    def make_output_human_readable(self, output_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         predicted_indices = output_dict["predictions"]
         if not isinstance(predicted_indices, np.ndarray):
             predicted_indices = predicted_indices.detach().cpu().numpy()
@@ -411,6 +415,7 @@ class PointerGeneratorNetwork(Model):
             predicted_tokens.append(token)
         return predicted_tokens
 
+    @overrides
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
         if not self._use_coverage:
             return {}

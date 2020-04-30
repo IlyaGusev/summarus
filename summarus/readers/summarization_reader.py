@@ -5,12 +5,11 @@ from allennlp.data.instance import Instance
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.data.tokenizers.tokenizer import Tokenizer
 from allennlp.data.token_indexers.token_indexer import TokenIndexer
-from allennlp.data.tokenizers import WordTokenizer
+from allennlp.data.tokenizers import WhitespaceTokenizer
 from allennlp.data.token_indexers import SingleIdTokenIndexer
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.data.tokenizers import Token
 from allennlp.data.fields import TextField, ArrayField, MetadataField, NamespaceSwappingField
-from allennlp.data.tokenizers.word_splitter import SimpleWordSplitter
 
 
 class SummarizationReader(DatasetReader):
@@ -24,8 +23,10 @@ class SummarizationReader(DatasetReader):
                  target_namespace: str = "target_tokens",
                  save_copy_fields: bool = False,
                  save_pgn_fields: bool = False,
-                 lowercase: bool = True) -> None:
-        super().__init__(lazy=True)
+                 lowercase: bool = True,
+                 cache_directory: str = None,
+                 lazy: bool = True) -> None:
+        super().__init__(lazy=lazy, cache_directory=cache_directory)
 
         assert save_pgn_fields or save_copy_fields or (not save_pgn_fields and not save_copy_fields)
 
@@ -33,7 +34,7 @@ class SummarizationReader(DatasetReader):
         self._source_max_tokens = source_max_tokens
         self._target_max_tokens = target_max_tokens
 
-        self._tokenizer = tokenizer or WordTokenizer(word_splitter=SimpleWordSplitter())
+        self._tokenizer = tokenizer or WhitespaceTokenizer()
 
         tokens_indexer = {"tokens": SingleIdTokenIndexer()}
         self._source_token_indexers = source_token_indexers or tokens_indexer

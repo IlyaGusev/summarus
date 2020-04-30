@@ -62,9 +62,9 @@ class SummaRuNNer(Model):
             self._novelty_linear_layer = Linear(self._h_sentence_dim, self._h_sentence_dim, bias=False)
 
     def forward(self,
-                source_sentences: Dict[str, torch.Tensor],
+                source_sentences: Dict[str, Dict[str, torch.Tensor]],
                 sentences_tags: torch.LongTensor = None) -> Dict[str, torch.Tensor]:
-        tokens = source_sentences["tokens"]
+        tokens = source_sentences["tokens"]["tokens"]
         batch_size = tokens.size(0)
         sentences_count = tokens.size(1)
         max_sentence_length = tokens.size(2)
@@ -122,9 +122,9 @@ class SummaRuNNer(Model):
 
     def _encode(self, source_tokens: Dict[str, torch.Tensor]) -> torch.Tensor:
         # shape: (batch_size, max_input_sequence_length, encoder_input_dim)
-        embedded_input = self._source_embedder(source_tokens)
+        embedded_input = self._source_embedder({"tokens": source_tokens})
         # shape: (batch_size, max_input_sequence_length)
-        source_mask = util.get_text_field_mask(source_tokens)
+        source_mask = util.get_text_field_mask({"tokens": source_tokens})
         # shape: (batch_size, max_input_sequence_length, encoder_output_dim)
         encoder_outputs = self._sentence_encoder(embedded_input, source_mask)
         return encoder_outputs
