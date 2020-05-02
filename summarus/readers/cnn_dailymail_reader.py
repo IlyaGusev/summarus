@@ -71,9 +71,9 @@ def get_article_and_abstract(story_file, encoding="utf-8", fix_period=True) -> T
 @DatasetReader.register("cnn_dailymail")
 class CNNDailyMailReader(SummarizationReader):
     def __init__(self,
-                 cnn_tokenized_dir: str,
-                 dm_tokenized_dir: str,
                  tokenizer: Tokenizer,
+                 cnn_tokenized_dir: str=None,
+                 dm_tokenized_dir: str=None,
                  source_token_indexers: Dict[str, TokenIndexer] = None,
                  target_token_indexers: Dict[str, TokenIndexer] = None,
                  source_max_tokens: int = 400,

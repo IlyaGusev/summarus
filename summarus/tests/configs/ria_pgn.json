@@ -25,7 +25,7 @@
       "use_coverage": true
     },
     "use_coverage": true,
-    "coverage_loss_weight": 0.1,
+    "coverage_loss_weight": 0.0,
     "max_decoding_steps": 100,
     "beam_size": 1
   },
@@ -43,7 +43,7 @@
     "shuffle": false,
     "optimizer": {
       "type": "adam",
-      "lr": 0.005
+      "lr": 0.01
     }
   },
   "vocabulary": {
@@ -55,6 +55,10 @@
     "target_max_tokens": 100,
     "separate_namespaces": true,
     "target_namespace": "target_tokens",
-    "save_pgn_fields": true
+    "save_pgn_fields": true,
+    "tokenizer": {
+      "type": "word",
+      "word_splitter": "simple"
+    }
   }
 }

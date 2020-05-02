@@ -49,6 +49,10 @@
     "target_max_tokens": 100,
     "separate_namespaces": true,
     "target_namespace": "target_tokens",
-    "save_copy_fields": true
+    "save_copy_fields": true,
+    "tokenizer": {
+        "type": "word",
+        "word_splitter": "simple"
+    }
   }
 }

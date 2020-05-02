@@ -52,6 +52,10 @@
     "target_max_tokens": 100,
     "separate_namespaces": true,
     "target_namespace": "target_tokens",
-    "save_pgn_fields": true
+    "save_pgn_fields": true,
+    "tokenizer": {
+        "type": "word",
+        "word_splitter": "simple"
+    }
   }
 }
