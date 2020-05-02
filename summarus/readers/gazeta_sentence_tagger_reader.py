@@ -26,14 +26,16 @@ class GazetaSentencesTaggerReader(SummarizationSentencesTaggerReader):
                  source_token_indexers: Dict[str, TokenIndexer] = None,
                  max_sentences_count: int = 30,
                  sentence_max_tokens: int = 100,
-                 lowercase: bool = True) -> None:
+                 lowercase: bool = True,
+                 lazy: bool = True) -> None:
         super().__init__(
             tokenizer=tokenizer,
             source_token_indexers=source_token_indexers,
             max_sentences_count=max_sentences_count,
             sentence_max_tokens=sentence_max_tokens,
             lowercase=lowercase,
-            language="ru"
+            language="ru",
+            lazy=lazy
         )
 
     def parse_set(self, path):

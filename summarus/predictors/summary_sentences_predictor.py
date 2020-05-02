@@ -8,27 +8,27 @@ from allennlp.predictors.predictor import Predictor
 from overrides import overrides
 
 
-@Predictor.register('sentences_tagger')
-class SentencesTaggerPredictor(Predictor):
-    def __init__(self, model: Model,
-                 dataset_reader: DatasetReader, top_n=3,
-                 border=None, detokenize_subwords=True) -> None:
+class SummarySentencesPredictor(Predictor):
+    def __init__(self,
+                 model: Model,
+                 dataset_reader: DatasetReader,
+                 top_n=3,
+                 border=None,
+                 fix_subwords=True) -> None:
         super().__init__(model, dataset_reader)
         self._top_n = top_n
         self._border = border
-        self._detokenize_subwords = detokenize_subwords
-
-    @overrides
-    def _json_to_instance(self, json_dict: JsonDict) -> Instance:
-        sentences = json_dict["source_sentences"]
-        return self._dataset_reader.text_to_instance(sentences)
+        self._fix_subwords = fix_subwords
 
     def _process_output(self, instance, output) -> str:
         proba = torch.sigmoid(torch.Tensor(output["predicted_tags"])).tolist()
         sorted_proba = list(sorted(enumerate(proba), key=lambda x: -x[1]))
-        if self._top_n is not None and self._border is None:
+        has_top_n = self._top_n is not None
+        has_border = self._border is not None
+        assert has_top_n or has_border
+        if has_top_n and not has_border:
             indices = sorted_proba[:self._top_n]
-        elif self._border is not None:
+        else:
             indices = [(i, p) for i, p in sorted_proba if p > self._border]
             if self._top_n is not None:
                 indices = indices[:self._top_n]
@@ -38,12 +38,14 @@ class SentencesTaggerPredictor(Predictor):
 
         sentences = instance["source_sentences"]
         hyp = [[t.text for t in sentences[i].tokens[1:-1]] for i, _ in indices]
-        if self._detokenize_subwords:
-            hyp = ["".join(s).replace("▁", " ").strip() for s in hyp]
-        else:
-            hyp = [" ".join(s) for s in hyp]
+        hyp = ["".join(s).replace("▁", " ").strip() if self._fix_subwords else " ".join(s) for s in hyp]
         hyp = " ".join(hyp).strip()
         return hyp
+
+    @overrides
+    def _json_to_instance(self, json_dict: JsonDict) -> Instance:
+        sentences = json_dict["source_sentences"]
+        return self._dataset_reader.text_to_instance(sentences)
 
     @overrides
     def predict_instance(self, instance: Instance) -> str:
@@ -59,3 +61,22 @@ class SentencesTaggerPredictor(Predictor):
     def dump_line(self, outputs: str) -> str:
         return outputs + "\n"
 
+
+@Predictor.register('words_summary_sentences')
+class WordsSummarySentencesPredictor(SummarySentencesPredictor):
+    def __init__(self,
+                 model: Model,
+                 dataset_reader: DatasetReader,
+                 top_n=3,
+                 border=None) -> None:
+        super().__init__(model, dataset_reader, top_n, border, fix_subwords=False)
+
+
+@Predictor.register('subwords_summary_sentences')
+class SubwordsSummarySentencesPredictor(SummarySentencesPredictor):
+    def __init__(self,
+                 model: Model,
+                 dataset_reader: DatasetReader,
+                 top_n=3,
+                 border=None) -> None:
+        super().__init__(model, dataset_reader, top_n, border, fix_subwords=True)

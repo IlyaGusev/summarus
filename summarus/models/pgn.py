@@ -289,7 +289,7 @@ class PointerGeneratorNetwork(Model):
         if self._use_coverage:
             coverage_loss = source_mask.new_zeros(1, dtype=torch.float32)
 
-        last_predictions = source_mask.new_full((batch_size,), fill_value=self._start_index)
+        last_predictions = state["tokens"].new_full((batch_size,), fill_value=self._start_index)
         step_proba: List[torch.Tensor] = []
         step_predictions: List[torch.Tensor] = []
         for timestep in range(num_decoding_steps):
@@ -347,7 +347,7 @@ class PointerGeneratorNetwork(Model):
 
     def _forward_beam_search(self, state: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         batch_size = state["source_mask"].size()[0]
-        start_predictions = state["source_mask"].new_full((batch_size,), fill_value=self._start_index)
+        start_predictions = state["tokens"].new_full((batch_size,), fill_value=self._start_index)
 
         # shape (all_top_k_predictions): (batch_size, beam_size, num_decoding_steps)
         # shape (log_probabilities): (batch_size, beam_size)

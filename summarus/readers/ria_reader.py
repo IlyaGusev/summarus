@@ -5,8 +5,6 @@ from bs4 import BeautifulSoup
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.data.tokenizers.tokenizer import Tokenizer
 from allennlp.data.token_indexers.token_indexer import TokenIndexer
-from allennlp.data.tokenizers import WordTokenizer
-from allennlp.data.tokenizers.word_splitter import SimpleWordSplitter
 
 from summarus.readers.summarization_reader import SummarizationReader
 
@@ -26,7 +24,7 @@ def parse_ria_json(path):
 @DatasetReader.register("ria")
 class RIAReader(SummarizationReader):
     def __init__(self,
-                 tokenizer: Tokenizer = None,
+                 tokenizer: Tokenizer,
                  source_token_indexers: Dict[str, TokenIndexer] = None,
                  target_token_indexers: Dict[str, TokenIndexer] = None,
                  source_max_tokens: int = 400,
@@ -35,9 +33,8 @@ class RIAReader(SummarizationReader):
                  target_namespace: str = "target_tokens",
                  save_copy_fields: bool = False,
                  save_pgn_fields: bool = False,
-                 lowercase: bool = False) -> None:
-        if not tokenizer:
-            tokenizer = WordTokenizer(word_splitter=SimpleWordSplitter())
+                 lowercase: bool = False,
+                 lazy: bool = True) -> None:
         super().__init__(
             tokenizer=tokenizer,
             source_token_indexers=source_token_indexers,
@@ -48,7 +45,8 @@ class RIAReader(SummarizationReader):
             target_namespace=target_namespace,
             save_copy_fields=save_copy_fields,
             save_pgn_fields=save_pgn_fields,
-            lowercase=lowercase
+            lowercase=lowercase,
+            lazy=lazy
         )
 
     def parse_set(self, path):

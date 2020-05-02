@@ -1,6 +1,6 @@
 from typing import List
 
-from sentencepiece import SentencePieceProcessor as sp_processor
+from sentencepiece import SentencePieceProcessor
 from allennlp.data.tokenizers.token import Token
 from allennlp.data.tokenizers.tokenizer import Tokenizer
 
@@ -12,7 +12,7 @@ class SubwordTokenizer(Tokenizer):
                  nbest_size: int = None,
                  alpha: float = None):
         self._model_path = model_path
-        self._processor = sp_processor()
+        self._processor = SentencePieceProcessor()
         self._processor.Load(model_path)
         self._nbest_size = nbest_size
         self._alpha = alpha

@@ -30,7 +30,7 @@ python3.6 target_to_lines.py \
   --output-file "${REF_FILE}";
 echo "File with gold summaries: ${REF_FILE}";
 
-echo "Calling new_evaluate.py...";
+echo "Calling evaluate.py...";
 python3.6 evaluate.py \
   --predicted-path "${PRED_FILE}" \
   --gold-path "${REF_FILE}" \

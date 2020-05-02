@@ -22,7 +22,7 @@ def parse_cnn_dm_json(path):
 @DatasetReader.register("cnn_dailymail_json")
 class CNNDailyMailJSONReader(SummarizationReader):
     def __init__(self,
-                 tokenizer: Tokenizer = None,
+                 tokenizer: Tokenizer,
                  source_token_indexers: Dict[str, TokenIndexer] = None,
                  target_token_indexers: Dict[str, TokenIndexer] = None,
                  source_max_tokens: int = 400,
@@ -31,7 +31,8 @@ class CNNDailyMailJSONReader(SummarizationReader):
                  target_namespace: str = "target_tokens",
                  save_copy_fields: bool = False,
                  save_pgn_fields: bool = False,
-                 lowercase: bool = True) -> None:
+                 lowercase: bool = True,
+                 lazy: bool = True) -> None:
         super().__init__(
             tokenizer=tokenizer,
             source_token_indexers=source_token_indexers,
@@ -42,7 +43,8 @@ class CNNDailyMailJSONReader(SummarizationReader):
             target_namespace=target_namespace,
             save_copy_fields=save_copy_fields,
             save_pgn_fields=save_pgn_fields,
-            lowercase=lowercase
+            lowercase=lowercase,
+            lazy=lazy
         )
 
     def parse_set(self, path):
