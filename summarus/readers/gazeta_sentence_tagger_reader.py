@@ -13,9 +13,9 @@ def parse_gazeta_oracle_json(path):
         for line in r:
             data = json.loads(line.strip())
             text = data["text"]
-            sentences = data["sentences"]
-            tags = data["oracle"]
             summary = data["summary"]
+            sentences = data.get("sentences", None)
+            tags = data.get("oracle", None)
             yield text, summary, sentences, tags
 
 
@@ -32,7 +32,8 @@ class GazetaSentencesTaggerReader(SummarizationSentencesTaggerReader):
             source_token_indexers=source_token_indexers,
             max_sentences_count=max_sentences_count,
             sentence_max_tokens=sentence_max_tokens,
-            lowercase=lowercase
+            lowercase=lowercase,
+            language="ru"
         )
 
     def parse_set(self, path):

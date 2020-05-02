@@ -1,5 +1,7 @@
 from typing import Iterable, Dict, Tuple, List
 
+import razdel
+import nltk
 from allennlp.data.instance import Instance
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.data.tokenizers import Tokenizer, WordTokenizer, Token
@@ -15,24 +17,29 @@ class SummarizationSentencesTaggerReader(DatasetReader):
                  source_token_indexers: Dict[str, TokenIndexer] = None,
                  max_sentences_count: int = 100,
                  sentence_max_tokens: int = 100,
-                 lowercase: bool = True) -> None:
+                 lowercase: bool = True,
+                 language: str = "ru") -> None:
         super().__init__(lazy=True)
 
         self._lowercase = lowercase
+        self._language = language
         self._max_sentences_count = max_sentences_count
         self._sentence_max_tokens = sentence_max_tokens
         self._tokenizer = tokenizer or WordTokenizer(word_splitter=SimpleWordSplitter())
         self._source_token_indexers = source_token_indexers or {"tokens": SingleIdTokenIndexer()}
 
     def _read(self, file_path: str) -> Iterable[Instance]:
-        for _, _, sentences, tags in self.parse_set(file_path):
-            if sum(tags) == 0:
-                continue
-            assert len(sentences) == len(tags)
-            instance = self.text_to_instance(sentences, tags)
+        for text, summary, sentences, tags in self.parse_set(file_path):
+            assert sentences is None and tags is None or len(sentences) == len(tags)
+            instance = self.text_to_instance(text, sentences, tags)
             yield instance
 
-    def text_to_instance(self, sentences: List[str], tags: List[int] = None) -> Instance:
+    def text_to_instance(self, text: str, sentences: List[str] = None, tags: List[int] = None) -> Instance:
+        if sentences is None:
+            if self._language == "ru":
+                sentences = [s.text for s in razdel.sentenize(text)]
+            else:
+                sentences = nltk.tokenize.sent_tokenize(text)
         sentences_tokens = []
         for sentence in sentences[:self._max_sentences_count]:
             sentence = sentence.lower() if self._lowercase else sentence

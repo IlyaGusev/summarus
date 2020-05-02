@@ -1,1 +1,2 @@
 from summarus.predictors.sentences_tagger_predictor import SentencesTaggerPredictor
+from summarus.predictors.subwords_summary_predictor import SubwordsSummaryPredictor
