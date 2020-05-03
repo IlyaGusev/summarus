@@ -69,53 +69,40 @@ pip install -r requirements.txt
 
 ### Commands
 
-#### preprocess.py
-
-Script for generation of a vocabulary.
-Uses a configuration file to determine the size of the vocabulary and options of dataset preprocessing.
-
-| Argument          | Default | Description                                      |
-|:------------------|:--------|:-------------------------------------------------|
-| --train-path      |         | path to train dataset                            |
-| --config-path     |         | path to file with configuration                  |
-| --vocabulary-path |         | path to directory where vocabulary will be saved |
-
-#### train_subword_model.py
+#### summarus.util.train_subword_model
 
 Script for subword model training.
 
-| Argument          | Default | Description                                                   |
-|:------------------|:--------|:--------------------------------------------------------------|
-| --train-path      |         | path to train dataset                                         |
-| --model-path      |         | path to directory where generated subword model will be saved |
-| --model-type      | bpe     | type of subword model, see sentencepiece                      |
-| --vocab-size      | 50000   | size of the resulting subword model vocabulary                |
+| Argument          | Default | Description                                                        |
+|:------------------|:--------|:-------------------------------------------------------------------|
+| --train-path      |         | path to train dataset                                              |
+| --model-path      |         | path to directory where generated subword model will be saved      |
+| --model-type      | bpe     | type of subword model, see sentencepiece                           |
+| --vocab-size      | 50000   | size of the resulting subword model vocabulary                     |
+| --config-path     |         | path to file with configuration for DatasetReader (with parse_set) |
 
-#### train.py
+#### train.sh
 
-Script for model training. Model directory should exist as well as config file and vocabulary directory.
-You should use preprocess.py to generate a vocabulary based on the train dataset.
+Script for training a model based on AllenNLP 'train' command.
 
-| Argument          | Default | Description                          |
-|:------------------|:--------|:-------------------------------------|
-| --train-path      |         | path to train dataset                |
-| --model-path      |         | path to directory with model's files |
-| --val-path        | None    | path to val dataset                  |
-| --seed            | 1048596 | random seed                          |
-| --vocabulary-path | None    | custom path to vocabulary            |
-| --config-path     | None    | custom path to config                |
+| Argument | Required | Description                                      |
+|:---------|:---------|--------------------------------------------------|
+| -c       | true     | path to file with configuration                  |
+| -s       | true     | path to directory where model will be saved      |
+| -r       | false    | --recovery in AllenNLP 'train'                   |
+| -t       | true     | path to train dataset                            |
+| -v       | true     | path to val dataset                              |
+| -b       | false    | path BPE model (if needed)                       |
 
-#### evaluate.py
+#### predict.sh
 
 Script for model evaluation. The test dataset should have the same format as the train dataset.
 
-| Argument             | Default | Description                                               |
-|:---------------------|:--------|:----------------------------------------------------------|
-| --test-path          |         | path to test dataset                                      |
-| --model-path         |         | path to directory with model's files                      |
-| --metric             | all     | what metric to evaluate, choices=("rouge", "bleu", "all") |
-| --max-count          | None    | how many test examples to consider                        |
-| --report-every       | None    | print metrics every N'th step                             |
-| --model-config-path  | None    | custom path to model config                               |
-| --reader-config-path | None    | path to custom reader config                              |
-| --batch-size         | 32      | size of a batch with test examples to run simultaneously  |
+| Argument | Required | Default | Description                                               |
+|:---------|:---------|:--------|:----------------------------------------------------------|
+| -t       | true     |         | path to test dataset                                      |
+| -m       | true     |         | path to tar.gz archive with model                         |
+| -p       | true     |         | name of Predictor                                         |
+| -r       | true     |         | path to a reader config (to get gold summaries)           |
+| -b       | false    | 32      | size of a batch with test examples to run simultaneously  |
+| -M       | false    |         | path to meteor.jar for Meteor metric                      |

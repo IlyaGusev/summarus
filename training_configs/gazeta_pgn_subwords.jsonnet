@@ -86,8 +86,5 @@ local CUDA_DEVICE = 0;
       "type": "adam",
       "lr": LR
     }
-  },
-  "random_seed": SEED,
-  "numpy_seed": SEED,
-  "pytorch_seed": SEED
+  }
 }
