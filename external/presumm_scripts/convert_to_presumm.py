@@ -4,7 +4,7 @@ import torch
 from allennlp.common.params import Params
 from allennlp.data.dataset_readers import DatasetReader
 from transformers import BertTokenizer
-from razdel import tokenize, sentenize
+from razdel import sentenize
 
 from summarus.readers import *
 
@@ -60,8 +60,8 @@ def preprocess(config_path, file_path, save_path, bert_path, max_src_tokens, max
     for i, (text, summary) in enumerate(reader.parse_set(file_path)):
         if nrows is not None and i >= nrows:
             break
-        src = [[w.text.lower() if lower else w.text for w in tokenize(sentence.text)] for sentence in sentenize(text)]
-        tgt = [[w.text.lower() if lower else w.text for w in tokenize(sentence.text)] for sentence in sentenize(summary)]
+        src = [(s.text.lower() if lower else s.text).split() for s in sentenize(text)]
+        tgt = [(s.text.lower() if lower else s.text).split() for s in sentenize(summary)]
         src_indices, tgt_indices, segments_ids, cls_ids, src_txt, tgt_txt = bert.preprocess(src, tgt)
         b_data_dict = {
             "src": src_indices, "tgt": tgt_indices,

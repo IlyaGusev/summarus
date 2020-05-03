@@ -1,7 +1,7 @@
 import argparse
 
 import razdel
-from evaluate import calc_metrics
+from summarus.util.metrics import print_metrics
 
 
 def main(gold_path, predicted_path, metric, tokenize_after):
@@ -17,14 +17,14 @@ def main(gold_path, predicted_path, metric, tokenize_after):
                 gold_summary = " ".join([token.text for token in razdel.tokenize(gold_summary)])
             refs.append(gold_summary)
             hyps.append(pred_summary)
-    calc_metrics(refs, hyps, metric)
+    print_metrics(refs, hyps, metric)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--gold-path', type=str, required=True)
     parser.add_argument('--predicted-path', type=str, required=True)
-    parser.add_argument('--metric', choices=("rouge", "legacy_rouge", "bleu", "all"), default="all")
+    parser.add_argument('--metric', choices=("rouge", "bleu", "all"), default="all")
     parser.add_argument('--tokenize-after', action='store_true')
     args = parser.parse_args()
     main(**vars(args))
