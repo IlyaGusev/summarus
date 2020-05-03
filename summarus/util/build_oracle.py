@@ -31,8 +31,10 @@ def build_oracle_summary_greedy(text, gold_summary, calc_score, lower=True, max_
     oracle_summary_sentences = set()
     score = -1.0
     summaries = []
+
     def indices_to_text(indices):
         return " ".join([sentences[index] for index in sorted(list(indices))])
+
     for _ in range(n_sentences):
         for i in range(n_sentences):
             if i in oracle_summary_sentences:
