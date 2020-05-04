@@ -1,18 +1,17 @@
 local TRAIN_DATA_PATH = std.extVar("TRAIN_DATA_PATH");
 local VAL_DATA_PATH = std.extVar("VAL_DATA_PATH");
 local BPE_MODEL_PATH = std.extVar("BPE_MODEL_PATH");
-local READER = "gazeta_sentences_tagger_reader";
+local READER = "ria";
 local LOWERCASE = true;
-local MAX_SENTENCES_COUNT = 50;
-local SENTENCE_MAX_TOKENS = 100;
-local VOCAB_SIZE = 5000;
+local SOURCE_MAX_TOKENS = 800;
+local TARGET_MAX_TOKENS = 200;
+local VOCAB_SIZE = 50000;
 local BATCH_SIZE = 32;
 local EMBEDDING_DIM = 128;
-local SENTENCE_ENCODER_RNN_NUM_LAYERS = 1;
-local SENTENCE_ENCODER_RNN_DIM = 256;
-local SENTENCE_ACCUMULATOR_RNN_NUM_LAYERS = 1;
-local SENTENCE_ACCUMULATOR_RNN_DIM = 256;
-local DROPOUT = 0.3;
+local RNN_DIM = 256;
+local RNN_NUM_LAYERS = 2;
+local MAX_DECODING_STEPS = 200;
+local BEAM_SIZE = 4;
 local NUM_EPOCHS = 10;
 local LR = 0.001;
 local SEED = 42;
@@ -22,27 +21,31 @@ local CUDA_DEVICE = 0;
   "train_data_path": TRAIN_DATA_PATH,
   "validation_data_path": VAL_DATA_PATH,
   "dataset_reader": {
-      "max_sentences_count": MAX_SENTENCES_COUNT,
-      "sentence_max_tokens": SENTENCE_MAX_TOKENS,
-      "type": READER,
-      "lowercase": LOWERCASE,
+      "source_max_tokens": SOURCE_MAX_TOKENS,
+      "target_max_tokens": TARGET_MAX_TOKENS,
       "tokenizer": {
         "type": "subword",
         "model_path": BPE_MODEL_PATH
-      }
+      },
+      "save_pgn_fields": true,
+      "separate_namespaces": true,
+      "target_namespace": "target_tokens",
+      "type": READER,
+      "lowercase": LOWERCASE
   },
   "vocabulary": {
     "max_vocab_size": VOCAB_SIZE
   },
   "iterator": {
     "type": "bucket",
-    "sorting_keys": [["source_sentences", "num_fields"]],
+    "sorting_keys": [["source_tokens", "num_tokens"]],
     "batch_size": BATCH_SIZE,
     "padding_noise": 0.0,
-    "cache_instances": true
+    "cache_instances": false
   },
   "model": {
-    "type": "summarunner",
+    "type": "pgn",
+    "target_namespace": "target_tokens",
     "source_embedder": {
       "type": "basic",
       "token_embedders": {
@@ -52,25 +55,25 @@ local CUDA_DEVICE = 0;
         }
       }
     },
-    "sentence_encoder": {
+    "embed_attn_to_output": true,
+    "encoder": {
       "type": "lstm",
-      "num_layers": SENTENCE_ENCODER_RNN_NUM_LAYERS,
+      "num_layers": RNN_NUM_LAYERS,
       "input_size": EMBEDDING_DIM,
-      "hidden_size": SENTENCE_ENCODER_RNN_DIM,
+      "hidden_size": RNN_DIM,
       "bidirectional": true
     },
-    "sentence_accumulator": {
-      "type": "lstm",
-      "num_layers": SENTENCE_ACCUMULATOR_RNN_NUM_LAYERS,
-      "input_size": SENTENCE_ENCODER_RNN_DIM * 2,
-      "hidden_size": SENTENCE_ACCUMULATOR_RNN_DIM,
-      "bidirectional": true
+    "attention": {
+      "type": "bahdanau",
+      "dim": RNN_DIM * 2,
+      "use_coverage": false,
+      "init_coverage_layer": true,
+      "use_attn_bias": true
     },
-    "dropout": DROPOUT,
-    "use_novelty": false,
-    "use_output_bias": false,
-    "use_salience": false,
-    "use_pos_embedding": false
+    "use_coverage": false,
+    "coverage_loss_weight": 0.0,
+    "max_decoding_steps": MAX_DECODING_STEPS,
+    "beam_size": BEAM_SIZE
   },
   "trainer": {
     "num_epochs": NUM_EPOCHS,

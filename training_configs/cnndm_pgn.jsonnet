@@ -1,16 +1,15 @@
 local TRAIN_DATA_PATH = std.extVar("TRAIN_DATA_PATH");
 local VAL_DATA_PATH = std.extVar("VAL_DATA_PATH");
-local BPE_MODEL_PATH = std.extVar("BPE_MODEL_PATH");
-local READER = "gazeta";
+local READER = "cnn_dailymail_json";
 local LOWERCASE = true;
-local SOURCE_MAX_TOKENS = 800;
-local TARGET_MAX_TOKENS = 200;
-local VOCAB_SIZE = 5000;
+local SOURCE_MAX_TOKENS = 400;
+local TARGET_MAX_TOKENS = 100;
+local VOCAB_SIZE = 50000;
 local BATCH_SIZE = 16;
 local EMBEDDING_DIM = 128;
 local RNN_DIM = 256;
 local RNN_NUM_LAYERS = 2;
-local MAX_DECODING_STEPS = 200;
+local MAX_DECODING_STEPS = 100;
 local BEAM_SIZE = 4;
 local NUM_EPOCHS = 10;
 local LR = 0.001;
@@ -24,8 +23,8 @@ local CUDA_DEVICE = 0;
       "source_max_tokens": SOURCE_MAX_TOKENS,
       "target_max_tokens": TARGET_MAX_TOKENS,
       "tokenizer": {
-        "type": "subword",
-        "model_path": BPE_MODEL_PATH
+        "type": "word",
+        "word_splitter": "simple"
       },
       "save_pgn_fields": true,
       "separate_namespaces": true,
@@ -41,7 +40,7 @@ local CUDA_DEVICE = 0;
     "sorting_keys": [["source_tokens", "num_tokens"]],
     "batch_size": BATCH_SIZE,
     "padding_noise": 0.0,
-    "cache_instances": true
+    "cache_instances": false
   },
   "model": {
     "type": "pgn",
