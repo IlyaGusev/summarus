@@ -14,7 +14,6 @@ local MAX_DECODING_STEPS = 200;
 local BEAM_SIZE = 4;
 local NUM_EPOCHS = 10;
 local LR = 0.001;
-local SEED = 42;
 local CUDA_DEVICE = 0;
 
 {
