@@ -60,6 +60,11 @@ def evaluate(predicted_path,
             if max_count is not None and i >= max_count:
                 break
             ref, hyp = postprocess(ref, hyp, is_multiple_ref, detokenize_after, tokenize_after)
+            if not hyp:
+                print("Empty hyp for ref: ", ref)
+                continue
+            if not ref:
+                continue
             refs.append(ref)
             hyps.append(hyp)
     print_metrics(refs, hyps, metric, meteor_jar)

@@ -15,9 +15,9 @@ t_flag=false;
 p_flag=false;
 b_flag=false;
 r_flag=false;
-M_flag=false;
+D_flag=false;
 
-while getopts ":m:t:p:b:r:M:" opt; do
+while getopts ":m:t:p:b:r:M:TD" opt; do
   case $opt in
     # Options for AllenNLP 'predict'
     # Path to tar.gz archive with model
@@ -41,6 +41,14 @@ while getopts ":m:t:p:b:r:M:" opt; do
     # Options for evaluate.py
     # Path to validation data (for early stopping)
     M) METEOR_JAR="$OPTARG"; M_flag=true
+    ;;
+    # --tokenize-after for evaluate.py
+    T) T_flag=true
+    ;;
+
+    # Other options
+    # Do not remove temporary files
+    D) D_flag=true
     ;;
 
     \?) echo "Invalid option -$OPTARG" >&2; exit_abnormal
@@ -78,7 +86,6 @@ fi
 PRED_FILE=$(mktemp)
 REF_FILE=$(mktemp)
 
-
 echo "Calling AllenNLP predict...";
 allennlp predict \
   "${MODEL_ARCHIVE_PATH}" \
@@ -104,9 +111,15 @@ python3.6 evaluate.py \
   --predicted-path "${PRED_FILE}" \
   --gold-path "${REF_FILE}" \
   --metric all \
-  --tokenize-after \
-  ${M_flag:+--meteor-jar $METEOR_JAR};
+  ${M_flag:+--meteor-jar $METEOR_JAR} \
+  ${T_flag:+--tokenize-after};
 
-echo "Removing temporary files...";
-rm "${PRED_FILE}";
-rm "${REF_FILE}";
+if ! $D_flag
+then
+  echo "Removing temporary files...";
+  rm "${PRED_FILE}";
+  rm "${REF_FILE}";
+else
+  echo "File with predicted summaries: ${PRED_FILE}";
+  echo "File with gold summaries: ${REF_FILE}";
+fi
