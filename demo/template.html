@@ -1,0 +1,64 @@
+<html>
+    <head>
+        <title>
+            $title
+        </title>
+        <style>
+            $css
+        </style>
+    </head>
+    <body>
+        <div class="pane-container">
+            <div class="pane model">
+                <div class="pane__left model__input">
+                    <div class="model__content">
+                        <h2><span>$title</span></h2>
+                        <div class="model__content">
+                            $inputs
+                            <div class="form__field form__field--btn">
+                                <button type="button" class="btn btn--icon-disclosure" onclick="predict()">
+                                    Predict
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pane__right model__output model__output--empty">
+                    <div class="pane__thumb"></div>
+                    <div class="model__content">
+                        <div id="output" class="output">
+                            <div class="placeholder">
+                                <div class="placeholder__content">
+                                    <p>Run model to view results</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script>
+    function predict() {
+        var quotedFieldList = $qfl;
+        var data = {};
+        quotedFieldList.forEach(function(fieldName) {
+            data[fieldName] = document.getElementById("input-" + fieldName).value;
+        })
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/predict');
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status == 200) {
+                // If you want a more impressive visualization than just
+                // outputting the raw JSON, change this part of the code.
+                var htmlResults = "<div>" + JSON.stringify(JSON.parse(xhr.responseText), null, 2) + "</div>";
+
+                document.getElementById("output").innerHTML = htmlResults;
+            }
+        };
+        xhr.send(JSON.stringify(data));
+    }
+    </script>
+</html>
