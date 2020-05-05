@@ -20,6 +20,7 @@ local CUDA_DEVICE = 0;
 {
   "train_data_path": TRAIN_DATA_PATH,
   "validation_data_path": VAL_DATA_PATH,
+  "datasets_for_vocab_creation": ["train"],
   "dataset_reader": {
       "max_sentences_count": MAX_SENTENCES_COUNT,
       "sentence_max_tokens": SENTENCE_MAX_TOKENS,
