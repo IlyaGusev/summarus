@@ -44,6 +44,8 @@ class PointerGeneratorNetwork(Model):
         self._end_index = self.vocab.get_token_index(END_SYMBOL, target_namespace)
         self._unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN, target_namespace)
         self._vocab_size = self.vocab.get_vocab_size(target_namespace)
+        assert self._vocab_size > 2, \
+            "Target vocabulary is empty. Make sure 'target_namespace' option of the model is correct."
 
         # Encoder
         self._source_embedder = source_embedder
