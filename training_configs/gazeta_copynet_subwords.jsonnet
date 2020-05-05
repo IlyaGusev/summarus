@@ -23,8 +23,8 @@ local CUDA_DEVICE = 0;
       "source_max_tokens": SOURCE_MAX_TOKENS,
       "target_max_tokens": TARGET_MAX_TOKENS,
       "tokenizer": {
-        "type": "word",
-        "word_splitter": "simple"
+        "type": "subword",
+        "model_path": BPE_MODEL_PATH
       },
       "save_copy_fields": true,
       "separate_namespaces": true,
