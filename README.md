@@ -89,10 +89,9 @@ Script for training a model based on AllenNLP 'train' command.
 |:---------|:---------|--------------------------------------------------|
 | -c       | true     | path to file with configuration                  |
 | -s       | true     | path to directory where model will be saved      |
-| -r       | false    | --recovery in AllenNLP 'train'                   |
 | -t       | true     | path to train dataset                            |
 | -v       | true     | path to val dataset                              |
-| -b       | false    | path BPE model (if needed)                       |
+| -r       | false    | recover from checkpoint                          |
 
 #### predict.sh
 

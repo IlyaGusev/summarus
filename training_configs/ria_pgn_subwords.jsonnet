@@ -1,6 +1,6 @@
 local TRAIN_DATA_PATH = std.extVar("TRAIN_DATA_PATH");
 local VAL_DATA_PATH = std.extVar("VAL_DATA_PATH");
-local BPE_MODEL_PATH = std.extVar("BPE_MODEL_PATH");
+local BPE_MODEL_PATH = "https://bpe-models.s3.eu-west-3.amazonaws.com/bpe_ria_50k.model";
 local READER = "ria";
 local LOWERCASE = true;
 local SOURCE_MAX_TOKENS = 800;

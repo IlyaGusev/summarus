@@ -2,7 +2,7 @@
 set -e
 
 usage() {
-  echo "Usage: $0 -c CONFIG_PATH -s SERIALIZATION_PATH -t TRAIN_DATA_PATH -v VAL_DATA_PATH [ -b BPE_MODEL_PATH ]" 1>&2
+  echo "Usage: $0 -c CONFIG_PATH -s SERIALIZATION_PATH -t TRAIN_DATA_PATH -v VAL_DATA_PATH" 1>&2
 }
 
 exit_abnormal() {
@@ -15,7 +15,7 @@ s_flag=false;
 t_flag=false;
 v_flag=false;
 
-while getopts ":c:s:t:v:b:r" opt; do
+while getopts ":c:s:t:v:r" opt; do
   case $opt in
     # Options for AllenNLP 'train'
     # Path to training config
@@ -34,9 +34,6 @@ while getopts ":c:s:t:v:b:r" opt; do
     ;;
     # Path to validation data (for early stopping)
     v) export VAL_DATA_PATH="$OPTARG"; v_flag=true
-    ;;
-    # Path to BPE model (optional, required for certain configs)
-    b) export BPE_MODEL_PATH="$OPTARG"
     ;;
 
     \?) echo "Invalid option -$OPTARG" >&2; exit_abnormal
