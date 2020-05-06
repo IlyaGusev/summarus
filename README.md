@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/IlyaGusev/summarus.svg?branch=master)](https://travis-ci.org/IlyaGusev/summarus)
 [![Code Climate](https://codeclimate.com/github/IlyaGusev/summarus/badges/gpa.svg)](https://codeclimate.com/github/IlyaGusev/summarus)
+[![Gitter](https://badges.gitter.im/summarus/community.svg)](https://gitter.im/summarus/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 Summarization models
 
@@ -9,6 +10,8 @@ Based on articles:
 * [Get To The Point: Summarization with Pointer-Generator Networks](https://arxiv.org/abs/1704.04368)
 * [Deep Reinforcement Learning For Sequence to Sequence Models](https://arxiv.org/abs/1805.09461)
 * [Self-Attentive Model for Headline Generation](https://arxiv.org/abs/1901.07786)
+
+## Contacts
 
 ## Prerequisites
 ```
