@@ -44,8 +44,8 @@ class SummarySentencesPredictor(Predictor):
 
     @overrides
     def _json_to_instance(self, json_dict: JsonDict) -> Instance:
-        sentences = json_dict["source_sentences"]
-        return self._dataset_reader.text_to_instance(sentences)
+        source = json_dict["source"]
+        return self._dataset_reader.text_to_instance(source)
 
     @overrides
     def predict_instance(self, instance: Instance) -> str:
