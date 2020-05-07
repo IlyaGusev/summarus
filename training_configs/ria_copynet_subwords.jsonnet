@@ -27,7 +27,7 @@ local CUDA_DEVICE = 0;
         "type": "subword",
         "model_path": BPE_MODEL_PATH
       },
-      "save_pgn_fields": true,
+      "save_copy_fields": true,
       "separate_namespaces": true,
       "target_namespace": "target_tokens",
       "type": READER,

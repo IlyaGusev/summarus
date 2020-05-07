@@ -2,7 +2,7 @@
 set -e
 
 usage() {
-  echo "Usage: $0 -m MODEL_ARCHIVE_PATH -t TEST_FILE -p PREDICTOR -r READER_CONFIG_FILE [ -b BATCH_SIZE ] [ -M METEOR_JAR ]" 1>&2
+  echo "Usage: $0 -m MODEL_ARCHIVE_PATH -t TEST_FILE -p PREDICTOR [-c CUDA_DEVICE] [ -b BATCH_SIZE ] [ -M METEOR_JAR ]" 1>&2
 }
 
 exit_abnormal() {
@@ -14,10 +14,10 @@ m_flag=false;
 t_flag=false;
 p_flag=false;
 b_flag=false;
-r_flag=false;
 D_flag=false;
+c_flag=false;
 
-while getopts ":m:t:p:b:r:M:TD" opt; do
+while getopts ":m:t:p:b:M:TDc:" opt; do
   case $opt in
     # Options for AllenNLP 'predict'
     # Path to tar.gz archive with model
@@ -32,10 +32,8 @@ while getopts ":m:t:p:b:r:M:TD" opt; do
     # Batch size (default: 32)
     b) BATCH_SIZE="$OPTARG"; b_flag=true
     ;;
-
-    # Options for target_to_lines
-    # Path to training data
-    r) READER_CONFIG_FILE="$OPTARG"; r_flag=true
+    # Cuda device
+    c) CUDA_DEVICE=$OPTARG; c_flag=true
     ;;
 
     # Options for evaluate.py
@@ -73,18 +71,22 @@ then
     echo "Missing -p option (name of Predictor)"; exit_abnormal;
 fi
 
-if ! $r_flag
-then
-    echo "Missing -r option (path to reader config to read gold targets)"; exit_abnormal;
-fi
-
 if ! $b_flag
 then
     BATCH_SIZE=32;
 fi
 
+if ! $c_flag
+then
+    CUDA_DEVICE=0;
+fi
+
 PRED_FILE=$(mktemp)
 REF_FILE=$(mktemp)
+
+ALLENNLP_FILE=$(which allennlp)
+ALLENNLP_SHEBANG=$(head -1 $ALLENNLP_FILE)
+PYTHON_STRING="${ALLENNLP_SHEBANG:2}"
 
 echo "Calling AllenNLP predict...";
 allennlp predict \
@@ -92,7 +94,7 @@ allennlp predict \
   "${TEST_FILE}" \
   --output-file "${PRED_FILE}" \
   --include-package summarus \
-  --cuda-device 0 \
+  --cuda-device ${CUDA_DEVICE} \
   --use-dataset-reader \
   --predictor "${PREDICTOR}" \
   --silent \
@@ -100,19 +102,19 @@ allennlp predict \
 echo "File with predictions: ${PRED_FILE}";
 
 echo "Calling target_to_lines.py...";
-python3.6 target_to_lines.py \
-  --reader-config-file "${READER_CONFIG_FILE}" \
-  --input-file "${TEST_FILE}" \
-  --output-file "${REF_FILE}";
+eval "${PYTHON_STRING} target_to_lines.py \
+  --archive-file ${MODEL_ARCHIVE_PATH} \
+  --input-file ${TEST_FILE} \
+  --output-file ${REF_FILE}";
 echo "File with gold summaries: ${REF_FILE}";
 
 echo "Calling evaluate.py...";
-python3.6 evaluate.py \
-  --predicted-path "${PRED_FILE}" \
-  --gold-path "${REF_FILE}" \
+eval "${PYTHON_STRING} evaluate.py \
+  --predicted-path ${PRED_FILE} \
+  --gold-path ${REF_FILE} \
   --metric all \
   ${M_flag:+--meteor-jar $METEOR_JAR} \
-  ${T_flag:+--tokenize-after};
+  ${T_flag:+--tokenize-after}";
 
 if ! $D_flag
 then

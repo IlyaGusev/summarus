@@ -105,7 +105,7 @@ Script for model evaluation. The test dataset should have the same format as the
 | -t       | true     |         | path to test dataset                                             |
 | -m       | true     |         | path to tar.gz archive with model                                |
 | -p       | true     |         | name of Predictor                                                |
-| -r       | true     |         | path to a reader config (to get gold summaries)                  |
+| -c       | false    | 0       | CUDA device                                                      |
 | -b       | false    | 32      | size of a batch with test examples to run simultaneously         |
 | -M       | false    |         | path to meteor.jar for Meteor metric                             |
 | -T       | false    |         | tokenize gold and predicted summaries before metrics calculation |
