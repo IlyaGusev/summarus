@@ -2,6 +2,7 @@ import argparse
 import re
 
 import razdel
+import nltk
 
 from summarus import *
 from summarus.util.metrics import print_metrics
@@ -25,7 +26,7 @@ def punct_detokenize(text):
     return text
 
 
-def postprocess(ref, hyp, is_multiple_ref=False, detokenize_after=False, tokenize_after=True):
+def postprocess(ref, hyp, language, is_multiple_ref=False, detokenize_after=False, tokenize_after=True):
     if is_multiple_ref:
         reference_sents = ref.split(" s_s ")
         decoded_sents = hyp.split("s_s")
@@ -40,14 +41,19 @@ def postprocess(ref, hyp, is_multiple_ref=False, detokenize_after=False, tokeniz
         ref = punct_detokenize(ref)
     if tokenize_after:
         hyp = hyp.replace("@@UNKNOWN@@", "<unk>")
-        hyp = " ".join([token.text for token in razdel.tokenize(hyp)])
-        ref = " ".join([token.text for token in razdel.tokenize(ref)])
+        if language == "ru":
+            hyp = " ".join([token.text for token in razdel.tokenize(hyp)])
+            ref = " ".join([token.text for token in razdel.tokenize(ref)])
+        else:
+            hyp = " ".join([token for token in nltk.word_tokenize(hyp)])
+            ref = " ".join([token for token in nltk.word_tokenize(ref)])
     return ref, hyp
 
 
 def evaluate(predicted_path,
              gold_path,
              metric,
+             language,
              max_count=None,
              is_multiple_ref=False,
              detokenize_after=False,
@@ -59,7 +65,7 @@ def evaluate(predicted_path,
         for i, (ref, hyp) in enumerate(zip(gold, pred)):
             if max_count is not None and i >= max_count:
                 break
-            ref, hyp = postprocess(ref, hyp, is_multiple_ref, detokenize_after, tokenize_after)
+            ref, hyp = postprocess(ref, hyp, language, is_multiple_ref, detokenize_after, tokenize_after)
             if not hyp:
                 print("Empty hyp for ref: ", ref)
                 continue
@@ -67,7 +73,7 @@ def evaluate(predicted_path,
                 continue
             refs.append(ref)
             hyps.append(hyp)
-    print_metrics(refs, hyps, metric, meteor_jar)
+    print_metrics(refs, hyps, metric=metric, meteor_jar=meteor_jar, language=language)
 
 
 if __name__ == "__main__":
@@ -76,6 +82,7 @@ if __name__ == "__main__":
     parser.add_argument('--predicted-path', type=str, required=True)
     parser.add_argument('--gold-path', type=str, required=True)
     parser.add_argument('--metric', choices=possible_choices, default="all")
+    parser.add_argument('--language', choices=("ru", "en"), required=True)
     parser.add_argument('--is-multiple-ref', action='store_true')
     parser.add_argument('--max-count', type=int, default=None)
     parser.add_argument('--detokenize-after', action='store_true')

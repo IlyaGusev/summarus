@@ -4,85 +4,26 @@
 [![Code Climate](https://codeclimate.com/github/IlyaGusev/summarus/badges/gpa.svg)](https://codeclimate.com/github/IlyaGusev/summarus)
 [![Gitter](https://badges.gitter.im/summarus/community.svg)](https://gitter.im/summarus/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
-Summarization models
+Abstractive and extractive summarization models. Building on top of [AllenNLP](https://allennlp.org/)
 
-Based on articles:
+Based on the following papers:
+* [SummaRuNNer: A Recurrent Neural Network based Sequence Model for Extractive Summarization of Documents](https://arxiv.org/abs/1611.04230)
 * [Get To The Point: Summarization with Pointer-Generator Networks](https://arxiv.org/abs/1704.04368)
-* [Deep Reinforcement Learning For Sequence to Sequence Models](https://arxiv.org/abs/1805.09461)
 * [Self-Attentive Model for Headline Generation](https://arxiv.org/abs/1901.07786)
+* [Text Summarization with Pretrained Encoders](https://arxiv.org/abs/1908.08345)
+* [Multilingual Denoising Pre-training for Neural Machine Translation](https://arxiv.org/abs/2001.08210)
 
 ## Contacts
+
+* Gitter chat: [summarus/community](https://gitter.im/summarus/community)
+* Telegram: [@YallenGusev](https://t.me/YallenGusev)
 
 ## Prerequisites
 ```
 pip install -r requirements.txt
 ```
 
-## Headline generation
-
-* Paper: [Importance of Copying Mechanism for News Headline Generation](http://www.dialog-21.ru/media/4599/gusevio-152.pdf)
-* Presentation: [Importance of Copying Mechanism for News Headline Generation](https://www.dropbox.com/s/agtvl3umlc6vci5/ICMNHG-Presentation.pdf)
-
-### Dataset splits
-* RIA original dataset: https://github.com/RossiyaSegodnya/ria_news_dataset
-* RIA splits: https://www.dropbox.com/s/rermx1r8lx9u7nl/ria.tar.gz
-* Lenta original dataset: https://github.com/yutkin/Lenta.Ru-News-Dataset
-* Lenta splits: https://www.dropbox.com/s/v9i2nh12a4deuqj/lenta.tar.gz
-
-### Models
-* seq2seq-bpe-5m: temporary invalid
-* copynet-words-10m: https://www.dropbox.com/s/sed8yh0yq4a7bmt/ria_10kk_words_copynet.tar.gz
-* copynet-bpe-10m: https://www.dropbox.com/s/v71akkarrtcjlxm/ria_10kk_subwords_copynet.tar.gz
-* seq2seq-words-25m: temporary invalid
-* seq2seq-bpe-25m: temporary invalid
-* copynet-words-25m: https://www.dropbox.com/s/52v50z3ne6qyuv5/ria_25kk_words_copynet.tar.gz
-* pgn-coverage-words-25m: https://www.dropbox.com/s/8ifuemqzeganziv/ria_25kk_words_pgn.tar.gz
-* pgn-coverage-subwords-24m: https://www.dropbox.com/s/5qmk4c5noq0wnax/ria_24kk_subwords_pgn_coverage.tar.gz
-* copynet-bpe-43m: https://www.dropbox.com/s/w67dcqf1mlv66uy/ria_43kk_subwords_copynet_short_context.tar.gz
-
-### Results
-
-#### Train dataset: RIA, test dataset: RIA
-
-| Model                     | R-1-f | R-1-r | R-2-f | R-2-r | R-L-f | R-L-r | R-mean-f | BLEU  |
-|:--------------------------|:------|:------|:------|:------|:------|:------|:---------|:------|
-| seq2seq-words-25m         | 36.96 | 35.19 | 19.68 | 19.02 | 34.30 | 33.60 | 30.31    | 44.69 |
-| seq2seq-bpe-5m            | 38.78 | 36.91 | 21.87 | 20.90 | 35.96 | 35.24 | 32.20    | 49.77 |
-| seq2seq-bpe-25m           | 40.30 | 38.83 | 22.94 | 22.18 | 37.50 | 37.01 | 33.58    | 51.66 |
-| copynet-words-10m         | 39.48 | 38.39 | 22.57 | 22.05 | 36.95 | 36.69 | 33.00    | 51.99 |
-| copynet-bpe-10m           | 40.03 | 38.68 | 23.25 | 22.50 | 37.44 | 37.04 | 33.57    | 52.57 |
-| copynet-words-25m         | 40.38 | 39.46 | 23.26 | 22.83 | 37.80 | 37.70 | 33.81    | 52.99 |
-| pgn-coverage-words-25m    | 40.33 | 39.24 | 22.87 | 22.36 | 37.72 | 37.49 | 33.64    | 51.48 |
-| pgn-coverage-subwords-24m | 40.35 | 39.25 | 23.14 | 22.60 | 37.70 | 37.47 | 33.73    | 52.61 |
-| copynet-bpe-43m           | 41.61 | 40.33 | 24.46 | 23.76 | 38.85 | 34.97 | 34.97    | 53.80 |
-| First Sentence            | 24.08 | 45.58 | 10.57 | 21.30 | 16.70 | 41.67 | 17.12    | -     |
-
-#### Train dataset: RIA, eval dataset: Lenta
-
-| Model             | R-1-f | R-1-r | R-2-f | R-2-r | R-L-f | R-L-r | R-mean-f | BLEU  |
-|:------------------|:------|:------|:------|:------|:------|:------|:---------|:------|
-| seq2seq-words-25m | 18.29 | 17.11 | 7.21  | 6.96  | 16.23 | 16.13 | 13.91    | 23.35 |
-| seq2seq-bpe-5m    | 19.38 | 17.35 | 8.27  | 7.43  | 16.94 | 16.55 | 14.86    | 25.14 |
-| seq2seq-bpe-25m   | 20.75 | 19.06 | 8.77  | 8.11  | 18.15 | 17.97 | 15.89    | 28.21 |
-| copynet-words-10m | 26.37 | 26.38 | 12.67 | 12.74 | 24.04 | 25.06 | 21.02    | 38.36 |
-| copynet-bpe-10m   | 25.60 | 24.57 | 12.33 | 11.84 | 23.03 | 23.33 | 20.32    | 36.13 |
-| copynet-words-25m | 28.24 | 27.51 | 13.67 | 13.51 | 25.67 | 25.91 | 22.53    | 40.13 |
-| copynet-bpe-43m   | 28.27 | 27.61 | 13.95 | 13.63 | 25.77 | 26.19 | 22.66    | 40.44 |
-| First Sentence    | 25.45 | 40.52 | 11.16 | 18.63 | 19.17 | 37.80 | 18.59    | 25.45 |
-
-### Commands
-
-#### summarus.util.train_subword_model
-
-Script for subword model training.
-
-| Argument          | Default | Description                                                        |
-|:------------------|:--------|:-------------------------------------------------------------------|
-| --train-path      |         | path to train dataset                                              |
-| --model-path      |         | path to directory where generated subword model will be saved      |
-| --model-type      | bpe     | type of subword model, see sentencepiece                           |
-| --vocab-size      | 50000   | size of the resulting subword model vocabulary                     |
-| --config-path     |         | path to file with configuration for DatasetReader (with parse_set) |
+## Commands
 
 #### train.sh
 
@@ -106,7 +47,106 @@ Script for model evaluation. The test dataset should have the same format as the
 | -m       | true     |         | path to tar.gz archive with model                                |
 | -p       | true     |         | name of Predictor                                                |
 | -c       | false    | 0       | CUDA device                                                      |
+| -L       | true     |         | Language ("ru" or "en")                                          |
 | -b       | false    | 32      | size of a batch with test examples to run simultaneously         |
 | -M       | false    |         | path to meteor.jar for Meteor metric                             |
 | -T       | false    |         | tokenize gold and predicted summaries before metrics calculation |
 | -D       | false    |         | save temporary files with gold and predicted summaries           |
+
+#### summarus.util.train_subword_model
+
+Script for subword model training.
+
+| Argument          | Default | Description                                                        |
+|:------------------|:--------|:-------------------------------------------------------------------|
+| --train-path      |         | path to train dataset                                              |
+| --model-path      |         | path to directory where generated subword model will be saved      |
+| --model-type      | bpe     | type of subword model, see sentencepiece                           |
+| --vocab-size      | 50000   | size of the resulting subword model vocabulary                     |
+| --config-path     |         | path to file with configuration for DatasetReader (with parse_set) |
+
+
+## Headline generation
+
+* Paper: [Importance of Copying Mechanism for News Headline Generation](http://www.dialog-21.ru/media/4599/gusevio-152.pdf)
+* Slides: [Importance of Copying Mechanism for News Headline Generation](https://www.dropbox.com/s/agtvl3umlc6vci5/ICMNHG-Presentation.pdf)
+
+#### Dataset splits:
+* RIA original dataset: https://github.com/RossiyaSegodnya/ria_news_dataset
+* RIA train/val/test: https://www.dropbox.com/s/rermx1r8lx9u7nl/ria.tar.gz
+* Lenta original dataset: https://github.com/yutkin/Lenta.Ru-News-Dataset
+* Lenta train/val/test: https://www.dropbox.com/s/v9i2nh12a4deuqj/lenta.tar.gz
+
+#### Models:
+* [ria_copynet_10kk](https://www.dropbox.com/s/78ni5gnbcjz59ss/ria_copynet_10kk.tar.gz)
+* [ria_pgn_24kk](https://www.dropbox.com/s/6wa1a2qzvqx5tti/ria_pgn_24kk.tar.gz)
+
+Prediction script:
+```
+./predict.sh -t <path_to_test_dataset> -m ria_pgn_24kk.tar.gz -p subwords_summary -L ru 
+```
+
+#### Results:
+##### Train dataset: RIA, test dataset: RIA
+
+| Model                     | R-1-f | R-2-f | R-L-f | BLEU  |
+|:--------------------------|:------|:------|:------|:------|
+| ria_copynet_10kk          | 40.0  | 23.3  | 37.5  | 52.6  |
+| ria_pgn_24kk              | 42.3  | 25.1  | 39.6  | 54.2  |
+| First Sentence            | 24.1  | 10.6  | 16.7  | -     |
+
+#### Train dataset: RIA, eval dataset: Lenta
+
+| Model                     | R-1-f | R-2-f | R-L-f | BLEU  |
+|:--------------------------|:------|:------|:------|:------|
+| ria_copynet_10kk          | 25.6  | 12.3  | 23.0  | 36.1  |
+| ria_pgn_24kk              | 26.4  | 12.3  | 24.0  | 39.8  |
+| First Sentence            | 25.5  | 11.2  | 19.2  | 25.5  |
+
+## Summarization - CNN/DailyMail
+
+#### Dataset splits:
+* CNN/DailyMail jsonl dataset: https://www.dropbox.com/s/35ezpg78rtukkgh/cnn_dm_jsonl.tar.gz
+
+#### Models:
+* [cnndm_pgn_25kk](https://www.dropbox.com/s/kctjduh84gam2pl/cnndm_pgn_25kk.tar.gz)
+
+Prediction script:
+```
+./predict.sh -t <path_to_test_dataset> -m cnndm_pgn_25kk.tar.gz -p words_summary -L en -R
+```
+
+#### Results:
+
+| Model                     | R-1-f | R-2-f | R-L-f | METEOR | BLEU |
+|:--------------------------|:------|:------|:------|:-------|:-----|
+| cnndm_pgn_25kk            | 38.5  | 16.5  | 33.4  | 17.6   | 47.7 |
+
+
+## Summarization - Gazeta, russian news dataset
+* Gazeta jsonl dataset: https://www.dropbox.com/s/cmpfvzxdknkeal4/gazeta_jsonl.tar.gz
+
+#### Models:
+* [gazeta_pgn_7kk](https://www.dropbox.com/s/aold2691f5amad8/gazeta_pgn_7kk.tar.gz)
+* [gazeta_pgn_25kk](https://www.dropbox.com/s/jmg7vk4ed9ph2ov/gazeta_pgn_25kk.tar.gz)
+* [gazeta_summarunner_3kk](https://www.dropbox.com/s/mlo7ioxodqib1xl/gazeta_summarunner_3kk.tar.gz)
+
+Prediction scripts:
+```
+./predict.sh -t <path_to_test_dataset> -m gazeta_pgn_7kk.tar.gz -p subwords_summary -L ru -T
+./predict.sh -t <path_to_test_dataset> -m gazeta_summarunner_3kk.tar.gz -p subwords_summary_sentences -L ru -T
+```
+
+#### External models:
+* [gazeta_mbart](https://www.dropbox.com/s/j3wimsv9hdmagzy/gazeta_mbart_checkpoint_4_200000.tar.gz)
+* [gazeta_mbart_lowercase](https://www.dropbox.com/s/k3gsgokq69468jw/gazeta_mbart_lower.tar.gz)
+
+#### Results:
+
+| Model                     | R-1-f | R-2-f | R-L-f | METEOR | BLEU |
+|:--------------------------|:------|:------|:------|:-------|:-----|
+| gazeta_pgn_7kk            | 29.4  | 12.7  | 24.6  | 21.2   | 38.8 |
+| gazeta_pgn_25kk           | 29.6  | 12.8  | 24.6  | 21.5   | 39   |
+| gazeta_summarunner_3kk    | 31.6  | 13.7  | 27.1  | 26.0   | 46.3 |
+| gazeta_mbart              | 32.9  | 14.9  | 28.6  |        | 49.4 |
+| gazeta_mbart_lower        | 32.7  | 14.7  | 28.3  | 25.8   | 48.7 |

@@ -16,8 +16,10 @@ p_flag=false;
 b_flag=false;
 D_flag=false;
 c_flag=false;
+R_flag=false;
+L_flag=false;
 
-while getopts ":m:t:p:b:M:TDc:" opt; do
+while getopts ":m:t:p:b:M:TRDc:L:" opt; do
   case $opt in
     # Options for AllenNLP 'predict'
     # Path to tar.gz archive with model
@@ -42,6 +44,12 @@ while getopts ":m:t:p:b:M:TDc:" opt; do
     ;;
     # --tokenize-after for evaluate.py
     T) T_flag=true
+    ;;
+    # --is-multiple-ref for evaluate.py
+    R) R_flag=true
+    ;;
+    # Language
+    L) LANGUAGE="$OPTARG"; L_flag=true
     ;;
 
     # Other options
@@ -69,6 +77,11 @@ fi
 if ! $p_flag
 then
     echo "Missing -p option (name of Predictor)"; exit_abnormal;
+fi
+
+if ! $L_flag
+then
+    echo "Missing -L option (language, 'en' or 'ru')"; exit_abnormal;
 fi
 
 if ! $b_flag
@@ -102,19 +115,21 @@ allennlp predict \
 echo "File with predictions: ${PRED_FILE}";
 
 echo "Calling target_to_lines.py...";
-eval "${PYTHON_STRING} target_to_lines.py \
-  --archive-file ${MODEL_ARCHIVE_PATH} \
-  --input-file ${TEST_FILE} \
-  --output-file ${REF_FILE}";
+eval '${PYTHON_STRING} target_to_lines.py \
+  --archive-file "${MODEL_ARCHIVE_PATH}" \
+  --input-file "${TEST_FILE}" \
+  --output-file "${REF_FILE}"';
 echo "File with gold summaries: ${REF_FILE}";
 
 echo "Calling evaluate.py...";
-eval "${PYTHON_STRING} evaluate.py \
-  --predicted-path ${PRED_FILE} \
-  --gold-path ${REF_FILE} \
+eval '${PYTHON_STRING} evaluate.py \
+  --predicted-path "${PRED_FILE}" \
+  --gold-path "${REF_FILE}" \
   --metric all \
-  ${M_flag:+--meteor-jar $METEOR_JAR} \
-  ${T_flag:+--tokenize-after}";
+  --language "${LANGUAGE}" \
+  ${R_flag:+--is-multiple-ref} \
+  ${M_flag:+--meteor-jar "${METEOR_JAR}"} \
+  ${T_flag:+--tokenize-after}';
 
 if ! $D_flag
 then

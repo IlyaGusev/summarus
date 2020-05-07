@@ -21,7 +21,7 @@ def calc_duplicate_n_grams_rate(documents):
             for n in range(1, 5)}
 
 
-def calc_metrics(refs, hyps, metric="all", meteor_jar=None):
+def calc_metrics(refs, hyps, language, metric="all", meteor_jar=None):
     metrics = dict()
     metrics["count"] = len(hyps)
     metrics["ref_example"] = refs[-1]
@@ -34,7 +34,7 @@ def calc_metrics(refs, hyps, metric="all", meteor_jar=None):
         scores = rouge.get_scores(hyps, refs, avg=True)
         metrics.update(scores)
     if metric in ("meteor", "all") and meteor_jar is not None and os.path.exists(meteor_jar):
-        meteor = Meteor(meteor_jar, language="ru")
+        meteor = Meteor(meteor_jar, language=language)
         metrics["meteor"] = meteor.compute_score(hyps, many_refs)
     if metric in ("duplicate_ngrams", "all"):
         metrics["duplicate_ngrams"] = dict()
@@ -42,8 +42,8 @@ def calc_metrics(refs, hyps, metric="all", meteor_jar=None):
     return metrics
 
 
-def print_metrics(refs, hyps, metric="all", meteor_jar=None):
-    metrics = calc_metrics(refs, hyps, metric, meteor_jar)
+def print_metrics(refs, hyps, language, metric="all", meteor_jar=None):
+    metrics = calc_metrics(refs, hyps, language=language, metric=metric, meteor_jar=meteor_jar)
 
     print("-------------METRICS-------------")
     print("Count:\t", metrics["count"])

@@ -8,7 +8,7 @@ import threading
 
 
 class Meteor:
-    def __init__(self, meteor_jar, language="ru"):
+    def __init__(self, meteor_jar, language):
         # Used to guarantee thread safety
         self.lock = threading.Lock()
 

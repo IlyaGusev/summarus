@@ -28,8 +28,7 @@ local CUDA_DEVICE = 0;
         "model_path": BPE_MODEL_PATH
       },
       "save_pgn_fields": true,
-      "separate_namespaces": true,
-      "target_namespace": "target_tokens",
+      "separate_namespaces": false,
       "type": READER,
       "lowercase": LOWERCASE
   },
@@ -45,7 +44,7 @@ local CUDA_DEVICE = 0;
   },
   "model": {
     "type": "pgn",
-    "target_namespace": "target_tokens",
+    "target_namespace": "tokens",
     "source_embedder": {
       "type": "basic",
       "token_embedders": {
