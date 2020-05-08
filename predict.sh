@@ -14,12 +14,13 @@ m_flag=false;
 t_flag=false;
 p_flag=false;
 b_flag=false;
+l_flag=false;
 D_flag=false;
 c_flag=false;
 R_flag=false;
 L_flag=false;
 
-while getopts ":m:t:p:b:M:TRDc:L:" opt; do
+while getopts ":m:t:p:b:M:TRDc:L:l" opt; do
   case $opt in
     # Options for AllenNLP 'predict'
     # Path to tar.gz archive with model
@@ -50,6 +51,9 @@ while getopts ":m:t:p:b:M:TRDc:L:" opt; do
     ;;
     # Language
     L) LANGUAGE="$OPTARG"; L_flag=true
+    ;;
+    # --lower for evaluate.py
+    l) l_flag=true
     ;;
 
     # Other options
@@ -127,6 +131,7 @@ eval '${PYTHON_STRING} evaluate.py \
   --gold-path "${REF_FILE}" \
   --metric all \
   --language "${LANGUAGE}" \
+  ${l_flag:+--lower} \
   ${R_flag:+--is-multiple-ref} \
   ${M_flag:+--meteor-jar "${METEOR_JAR}"} \
   ${T_flag:+--tokenize-after}';

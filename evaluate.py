@@ -26,7 +26,7 @@ def punct_detokenize(text):
     return text
 
 
-def postprocess(ref, hyp, language, is_multiple_ref=False, detokenize_after=False, tokenize_after=True):
+def postprocess(ref, hyp, language, is_multiple_ref=False, detokenize_after=False, tokenize_after=False, lower=False):
     if is_multiple_ref:
         reference_sents = ref.split(" s_s ")
         decoded_sents = hyp.split("s_s")
@@ -47,6 +47,9 @@ def postprocess(ref, hyp, language, is_multiple_ref=False, detokenize_after=Fals
         else:
             hyp = " ".join([token for token in nltk.word_tokenize(hyp)])
             ref = " ".join([token for token in nltk.word_tokenize(ref)])
+    if lower:
+        hyp = hyp.lower()
+        ref = ref.lower()
     return ref, hyp
 
 
@@ -58,6 +61,7 @@ def evaluate(predicted_path,
              is_multiple_ref=False,
              detokenize_after=False,
              tokenize_after=False,
+             lower=False,
              meteor_jar=None):
     hyps = []
     refs = []
@@ -65,7 +69,7 @@ def evaluate(predicted_path,
         for i, (ref, hyp) in enumerate(zip(gold, pred)):
             if max_count is not None and i >= max_count:
                 break
-            ref, hyp = postprocess(ref, hyp, language, is_multiple_ref, detokenize_after, tokenize_after)
+            ref, hyp = postprocess(ref, hyp, language, is_multiple_ref, detokenize_after, tokenize_after, lower)
             if not hyp:
                 print("Empty hyp for ref: ", ref)
                 continue
@@ -87,6 +91,7 @@ if __name__ == "__main__":
     parser.add_argument('--max-count', type=int, default=None)
     parser.add_argument('--detokenize-after', action='store_true')
     parser.add_argument('--tokenize-after', action='store_true')
+    parser.add_argument('--lower', action='store_true')
     parser.add_argument('--meteor-jar', type=str, default=None)
     args = parser.parse_args()
     evaluate(**vars(args))

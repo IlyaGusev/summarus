@@ -14,14 +14,17 @@ def main(train_path, val_path, test_path, config_path, subword_model_path, out_d
     params = Params.from_file(config_path)
     reader_params = params.pop("reader", default=Params({}))
     reader = DatasetReader.from_params(reader_params)
+
     processor = SentencePieceProcessor()
     processor.Load(subword_model_path)
+
     train_text_file = os.path.join(out_dir, "train.{}".format(source_suffix))
     train_summary_file = os.path.join(out_dir, "train.{}".format(target_suffix))
     val_text_file = os.path.join(out_dir, "val.{}".format(source_suffix))
     val_summary_file = os.path.join(out_dir, "val.{}".format(target_suffix))
     test_text_file = os.path.join(out_dir, "test.{}".format(source_suffix))
     test_summary_file = os.path.join(out_dir, "test.{}".format(target_suffix))
+
     files = ((train_path, train_text_file, train_summary_file),
              (val_path, val_text_file, val_summary_file),
              (test_path, test_text_file, test_summary_file))
