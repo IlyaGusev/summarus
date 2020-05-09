@@ -12,7 +12,7 @@ def main(train_path, val_path, test_path, config_path, subword_model_path, out_d
          max_text_subwords, max_summary_subwords, source_suffix, target_suffix, insert_tags=False,
          lowercase=False):
     params = Params.from_file(config_path)
-    reader_params = params.pop("reader", default=Params({}))
+    reader_params = params.pop("dataset_reader", default=Params({}))
     reader = DatasetReader.from_params(reader_params)
 
     processor = SentencePieceProcessor()

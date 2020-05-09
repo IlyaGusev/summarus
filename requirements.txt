@@ -3,7 +3,8 @@ torch >= 1.2.0
 nltk >= 3.4
 razdel >= 0.4.0
 overrides >= 2.8.0
-beautifulsoup4 == 4.9.0
-sentencepiece == 0.1.85
+beautifulsoup4 >= 4.9.0
+sentencepiece >= 0.1.85
 allennlp == 0.9.0
 rouge == 0.3.2
+flask >= 1.1.1
