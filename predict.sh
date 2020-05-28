@@ -19,8 +19,9 @@ D_flag=false;
 c_flag=false;
 R_flag=false;
 L_flag=false;
+P_flag=false;
 
-while getopts ":m:t:p:b:M:TRDc:L:l" opt; do
+while getopts ":m:t:p:b:M:TRDc:L:lP:" opt; do
   case $opt in
     # Options for AllenNLP 'predict'
     # Path to tar.gz archive with model
@@ -60,6 +61,9 @@ while getopts ":m:t:p:b:M:TRDc:L:l" opt; do
     # Do not remove temporary files
     D) D_flag=true
     ;;
+    # Set path for predictions
+    P) PRED_FILE="$OPTARG"; P_flag=true
+    ;;
 
     \?) echo "Invalid option -$OPTARG" >&2; exit_abnormal
     ;;
@@ -98,7 +102,11 @@ then
     CUDA_DEVICE=0;
 fi
 
-PRED_FILE=$(mktemp)
+if ! $P_flag
+then
+    PRED_FILE=$(mktemp);
+fi
+
 REF_FILE=$(mktemp)
 
 ALLENNLP_FILE=$(which allennlp)
