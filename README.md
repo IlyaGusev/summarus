@@ -124,7 +124,7 @@ Prediction script:
 
 
 ## Summarization - Gazeta, russian news dataset
-* Gazeta jsonl dataset: https://www.dropbox.com/s/cmpfvzxdknkeal4/gazeta_jsonl.tar.gz
+* Gazeta dataset: https://github.com/IlyaGusev/gazeta
 
 #### Models:
 * [gazeta_pgn_7kk](https://www.dropbox.com/s/aold2691f5amad8/gazeta_pgn_7kk.tar.gz)
