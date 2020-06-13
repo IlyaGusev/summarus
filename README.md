@@ -128,7 +128,9 @@ Prediction script:
 
 #### Models:
 * [gazeta_pgn_7kk](https://www.dropbox.com/s/aold2691f5amad8/gazeta_pgn_7kk.tar.gz)
+* [gazeta_pgn_7kk_cov.tar.gz](https://www.dropbox.com/s/2yk25xaizevtqw3/gazeta_pgn_7kk_cov.tar.gz)
 * [gazeta_pgn_25kk](https://www.dropbox.com/s/jmg7vk4ed9ph2ov/gazeta_pgn_25kk.tar.gz)
+* [gazeta_pgn_words_13kk.tar.gz](https://www.dropbox.com/s/acexr5xecc8xizx/gazeta_pgn_words_13kk.tar.gz)
 * [gazeta_summarunner_3kk](https://www.dropbox.com/s/mlo7ioxodqib1xl/gazeta_summarunner_3kk.tar.gz)
 
 Prediction scripts:
@@ -138,7 +140,7 @@ Prediction scripts:
 ```
 
 #### External models:
-* [gazeta_mbart](https://www.dropbox.com/s/j3wimsv9hdmagzy/gazeta_mbart_checkpoint_4_200000.tar.gz)
+* [gazeta_mbart](https://www.dropbox.com/s/b2auu9dhrm2wj0p/gazeta_mbart_checkpoint_600_160.tar.gz)
 * [gazeta_mbart_lowercase](https://www.dropbox.com/s/k3gsgokq69468jw/gazeta_mbart_lower.tar.gz)
 
 #### Results:
@@ -146,7 +148,9 @@ Prediction scripts:
 | Model                     | R-1-f | R-2-f | R-L-f | METEOR | BLEU |
 |:--------------------------|:------|:------|:------|:-------|:-----|
 | gazeta_pgn_7kk            | 29.4  | 12.7  | 24.6  | 21.2   | 38.8 |
+| gazeta_pgn_7kk_cov        | 29.8  | 12.8  | 25.4  | 22.1   | 40.8 |
 | gazeta_pgn_25kk           | 29.6  | 12.8  | 24.6  | 21.5   | 39   |
+| gazeta_pgn_words_13kk     | 29.4  | 12.6  | 24.4  | 20.9   | 35.9 |
 | gazeta_summarunner_3kk    | 31.6  | 13.7  | 27.1  | 26.0   | 46.3 |
-| gazeta_mbart              | 32.9  | 14.9  | 28.6  |        | 49.4 |
+| gazeta_mbart              | 32.6  | 14.6  | 28.2  | 25.7   | 49.8 |
 | gazeta_mbart_lower        | 32.7  | 14.7  | 28.3  | 25.8   | 48.7 |
