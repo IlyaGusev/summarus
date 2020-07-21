@@ -83,8 +83,6 @@ def build_oracle_records(records, nrows=None, lower=True):
         new_record["sentences"] = sentences
         new_record["oracle"] = oracle_indices
         new_records.append(new_record)
-
-    print_metrics(references, predictions)
     return new_records
 
 
