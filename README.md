@@ -68,18 +68,22 @@ Script for subword model training.
 
 ## Headline generation
 
-* Paper: [Importance of Copying Mechanism for News Headline Generation](http://www.dialog-21.ru/media/4599/gusevio-152.pdf)
+* First paper: [Importance of Copying Mechanism for News Headline Generation](http://www.dialog-21.ru/media/4599/gusevio-152.pdf)
 * Slides: [Importance of Copying Mechanism for News Headline Generation](https://www.dropbox.com/s/agtvl3umlc6vci5/ICMNHG-Presentation.pdf)
+* Second paper: [Advances of Transformer-Based Models for News Headline Generation](https://arxiv.org/abs/2007.05044)
 
 #### Dataset splits:
 * RIA original dataset: https://github.com/RossiyaSegodnya/ria_news_dataset
 * RIA train/val/test: https://www.dropbox.com/s/rermx1r8lx9u7nl/ria.tar.gz
+* RIA dataset preprocessed for mBART: https://www.dropbox.com/s/iq2ih8sztygvz0m/ria_data_mbart_512_200.tar.gz
 * Lenta original dataset: https://github.com/yutkin/Lenta.Ru-News-Dataset
 * Lenta train/val/test: https://www.dropbox.com/s/v9i2nh12a4deuqj/lenta.tar.gz
+* Lenta dataset preprocessed for mBART: https://www.dropbox.com/s/4oo8jazmw3izqvr/lenta_mbart_data_512_200.tar.gz
 
 #### Models:
 * [ria_copynet_10kk](https://www.dropbox.com/s/78ni5gnbcjz59ss/ria_copynet_10kk.tar.gz)
 * [ria_pgn_24kk](https://www.dropbox.com/s/6wa1a2qzvqx5tti/ria_pgn_24kk.tar.gz)
+* [ria_mbart](https://www.dropbox.com/s/bhrfd5o5etz8hso/ria_mbart_checkpoint_4.tar.gz)
 
 Prediction script:
 ```
@@ -124,7 +128,9 @@ Prediction script:
 
 
 ## Summarization - Gazeta, russian news dataset
+* Paper: [Dataset for Automatic Summarization of Russian News](https://arxiv.org/abs/2006.11063)
 * Gazeta dataset: https://github.com/IlyaGusev/gazeta
+* Usage examples: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1B26oDFEKSNCcI0BPkGXgxi13pbadriyN)
 
 #### Models:
 * [gazeta_pgn_7kk](https://www.dropbox.com/s/aold2691f5amad8/gazeta_pgn_7kk.tar.gz)
