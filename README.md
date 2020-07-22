@@ -97,6 +97,7 @@ Prediction script:
 |:--------------------------|:------|:------|:------|:------|
 | ria_copynet_10kk          | 40.0  | 23.3  | 37.5  | 52.6  |
 | ria_pgn_24kk              | 42.3  | 25.1  | 39.6  | 54.2  |
+| ria_mbart                 | 42.8  | 25.5  | 39.9  | 55.1  |
 | First Sentence            | 24.1  | 10.6  | 16.7  | -     |
 
 #### Train dataset: RIA, eval dataset: Lenta
