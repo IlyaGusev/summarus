@@ -106,6 +106,7 @@ Prediction script:
 |:--------------------------|:------|:------|:------|:------|
 | ria_copynet_10kk          | 25.6  | 12.3  | 23.0  | 36.1  |
 | ria_pgn_24kk              | 26.4  | 12.3  | 24.0  | 39.8  |
+| ria_mbart                 | 30.3  | 14.5  | 27.1  | 43.2  |
 | First Sentence            | 25.5  | 11.2  | 19.2  | 25.5  |
 
 ## Summarization - CNN/DailyMail
