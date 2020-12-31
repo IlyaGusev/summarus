@@ -10,8 +10,8 @@ class MBartSummarizationDataset(Dataset):
         self,
         input_file,
         tokenizer,
-        max_source_tokens_count=512,
-        max_target_tokens_count=128
+        max_source_tokens_count,
+        max_target_tokens_count
     ):
         self.pairs = []
         with open(input_file, "r") as f:
@@ -58,6 +58,7 @@ def train(
     save_steps,
     warmup_steps,
     num_train_epochs,
+    gradient_accumulation_steps,
     max_source_tokens_count,
     max_target_tokens_count
 ):
@@ -86,6 +87,7 @@ def train(
         learning_rate=learning_rate,
         warmup_steps=warmup_steps,
         num_train_epochs=num_train_epochs,
+        gradient_accumulation_steps=gradient_accumulation_steps,
         evaluation_strategy="steps"
     )
     trainer = Trainer(
@@ -102,7 +104,7 @@ if __name__ == "__main__":
     parser.add_argument("--train-file", type=str, required=True)
     parser.add_argument("--val-file", type=str, required=True)
     parser.add_argument("--model-name", type=str, default="facebook/mbart-large-cc25")
-    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--output-dir", type=str, required=True)
     parser.add_argument("--logging-steps", type=int, default=100)
     parser.add_argument("--save-steps", type=int, default=10000)
@@ -112,5 +114,6 @@ if __name__ == "__main__":
     parser.add_argument("--num-train-epochs", type=int, default=2)
     parser.add_argument("--max-source-tokens-count", type=int, default=512)
     parser.add_argument("--max-target-tokens-count", type=int, default=128)
+    parser.add_argument("--gradient-accumulation-steps", type=int, default=16)
     args = parser.parse_args()
     train(**vars(args))
