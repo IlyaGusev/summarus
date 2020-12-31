@@ -22,8 +22,9 @@ def predict(
         max_source_tokens_count,
         max_target_tokens_count
     )
-    model = MBartForConditionalGeneration.from_pretrained(model_name)
     device = torch.device("cuda:0") if use_cuda else torch.device("cpu")
+    model = MBartForConditionalGeneration.from_pretrained(model_name)
+    model.to(device)
     predictions = []
     for batch in test_dataset:
         summaries = model.generate(

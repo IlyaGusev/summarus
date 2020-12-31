@@ -15,7 +15,7 @@ class MBartSummarizationDataset(Dataset):
             for line in f:
                 record = json.loads(line)
                 source = record["text"]
-                target = record["title"]
+                target = record["summary"]
                 self.pairs.append((source, target))
         self.tokenizer = tokenizer
         self.max_source_tokens_count = max_source_tokens_count
