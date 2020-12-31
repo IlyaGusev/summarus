@@ -10,7 +10,7 @@ class MBartSummarizationDataset(Dataset):
         self,
         input_file,
         tokenizer,
-        max_source_tokens_count=256,
+        max_source_tokens_count=512,
         max_target_tokens_count=128
     ):
         self.pairs = []
@@ -57,11 +57,21 @@ def train(
     eval_steps,
     save_steps,
     warmup_steps,
-    num_train_epochs
+    num_train_epochs,
+    max_source_tokens_count,
+    max_target_tokens_count
 ):
     tokenizer = MBartTokenizer.from_pretrained(model_name)
-    train_dataset = MBartSummarizationDataset(train_file, tokenizer)
-    val_dataset = MBartSummarizationDataset(val_file, tokenizer)
+    train_dataset = MBartSummarizationDataset(
+        train_file,
+        tokenizer,
+        max_source_tokens_count,
+        max_target_tokens_count)
+    val_dataset = MBartSummarizationDataset(
+        val_file,
+        tokenizer,
+        max_source_tokens_count,
+        max_target_tokens_count)
     model = MBartForConditionalGeneration.from_pretrained(model_name)
     training_args = TrainingArguments(
         output_dir=output_dir,
@@ -102,5 +112,7 @@ if __name__ == "__main__":
     parser.add_argument("--eval-steps", type=int, default=10000)
     parser.add_argument("--warmup-steps", type=int, default=1000)
     parser.add_argument("--num-train-epochs", type=int, default=2)
+    parser.add_argument("--max-source-tokens-count", type=int, default=512)
+    parser.add_argument("--max-target-tokens-count", type=int, default=128)
     args = parser.parse_args()
     train(**vars(args))
