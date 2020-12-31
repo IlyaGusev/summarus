@@ -86,9 +86,7 @@ def train(
         learning_rate=learning_rate,
         warmup_steps=warmup_steps,
         num_train_epochs=num_train_epochs,
-        evaluation_strategy="steps",
-        fp16=True,
-        fp16_opt_level='O3'
+        evaluation_strategy="steps"
     )
     trainer = Trainer(
         model=model,
