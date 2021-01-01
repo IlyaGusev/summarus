@@ -54,6 +54,8 @@ def train(
         gradient_accumulation_steps=gradient_accumulation_steps,
         max_grad_norm=max_grad_norm,
         weight_decay=weight_decay,
+        fp16=fp16,
+        fp16_opt_level=fp16_opt_level,
         evaluation_strategy="steps"
     )
     trainer = Trainer(
