@@ -19,8 +19,12 @@ def train(
     warmup_steps,
     num_train_epochs,
     gradient_accumulation_steps,
+    max_grad_norm,
+    weight_decay,
     max_source_tokens_count,
-    max_target_tokens_count
+    max_target_tokens_count,
+    fp16_opt_level,
+    fp16=False
 ):
     tokenizer = MBartTokenizer.from_pretrained(model_name)
     train_dataset = MBartSummarizationDataset(
@@ -48,6 +52,8 @@ def train(
         warmup_steps=warmup_steps,
         num_train_epochs=num_train_epochs,
         gradient_accumulation_steps=gradient_accumulation_steps,
+        max_grad_norm=max_grad_norm,
+        weight_decay=weight_decay,
         evaluation_strategy="steps"
     )
     trainer = Trainer(
@@ -66,14 +72,19 @@ if __name__ == "__main__":
     parser.add_argument("--model-name", type=str, default="facebook/mbart-large-cc25")
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--output-dir", type=str, required=True)
-    parser.add_argument("--logging-steps", type=int, default=100)
-    parser.add_argument("--save-steps", type=int, default=10000)
+    parser.add_argument("--logging-steps", type=int, default=400)
+    parser.add_argument("--save-steps", type=int, default=6400)
     parser.add_argument("--learning-rate", type=float, default=0.00003)
-    parser.add_argument("--eval-steps", type=int, default=10000)
-    parser.add_argument("--warmup-steps", type=int, default=1000)
-    parser.add_argument("--num-train-epochs", type=int, default=2)
+    parser.add_argument("--eval-steps", type=int, default=3200)
+    parser.add_argument("--warmup-steps", type=int, default=125)
+    parser.add_argument("--num-train-epochs", type=int, default=3)
     parser.add_argument("--max-source-tokens-count", type=int, default=512)
     parser.add_argument("--max-target-tokens-count", type=int, default=128)
-    parser.add_argument("--gradient-accumulation-steps", type=int, default=16)
+    parser.add_argument("--gradient-accumulation-steps", type=int, default=4)
+    parser.add_argument("--max-grad-norm", type=float, default=0.1)
+    parser.add_argument("--weight-decay", type=float, default=0.01)
+    parser.add_argument("--fp16", action='store_true')
+    parser.add_argument("--fp16-opt-level", type=str, default="O1")
+
     args = parser.parse_args()
     train(**vars(args))

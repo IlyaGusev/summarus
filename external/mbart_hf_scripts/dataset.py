@@ -15,7 +15,7 @@ class MBartSummarizationDataset(Dataset):
             for line in f:
                 record = json.loads(line)
                 source = record["text"]
-                target = record["summary"]
+                target = record.get("summary", None)
                 self.pairs.append((source, target))
         self.tokenizer = tokenizer
         self.max_source_tokens_count = max_source_tokens_count
@@ -27,10 +27,10 @@ class MBartSummarizationDataset(Dataset):
     def __getitem__(self, index):
         source, target = self.pairs[index]
         batch = self.tokenizer.prepare_seq2seq_batch(
-            source,
+            [source],
             src_lang="ru_RU",
             tgt_lang="ru_RU",
-            tgt_texts=target,
+            tgt_texts=[target],
             return_tensors="pt",
             padding="max_length",
             truncation=True,
