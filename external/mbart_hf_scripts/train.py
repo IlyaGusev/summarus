@@ -26,6 +26,8 @@ def train(
     fp16_opt_level,
     fp16=False
 ):
+    if fp16:
+        print("Using FP16")
     tokenizer = MBartTokenizer.from_pretrained(model_name)
     train_dataset = MBartSummarizationDataset(
         train_file,
