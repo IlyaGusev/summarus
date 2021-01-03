@@ -2,6 +2,7 @@ import argparse
 import json
 import torch
 from transformers import MBartTokenizer, MBartForConditionalGeneration, TrainingArguments, Trainer
+from transformers.file_utils import is_apex_available
 
 from dataset import MBartSummarizationDataset
 
@@ -58,6 +59,7 @@ def train(
         weight_decay=weight_decay,
         fp16=fp16,
         fp16_opt_level=fp16_opt_level,
+        label_smoothing_factor=0.1,
         evaluation_strategy="steps"
     )
     trainer = Trainer(
@@ -82,8 +84,8 @@ if __name__ == "__main__":
     parser.add_argument("--eval-steps", type=int, default=3200)
     parser.add_argument("--warmup-steps", type=int, default=125)
     parser.add_argument("--num-train-epochs", type=int, default=3)
-    parser.add_argument("--max-source-tokens-count", type=int, default=512)
-    parser.add_argument("--max-target-tokens-count", type=int, default=128)
+    parser.add_argument("--max-source-tokens-count", type=int, default=600)
+    parser.add_argument("--max-target-tokens-count", type=int, default=160)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=4)
     parser.add_argument("--max-grad-norm", type=float, default=0.1)
     parser.add_argument("--weight-decay", type=float, default=0.01)
