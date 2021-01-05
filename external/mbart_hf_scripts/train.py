@@ -26,7 +26,8 @@ def train(
     max_target_tokens_count,
     label_smoothing_factor,
     fp16_opt_level,
-    fp16=False
+    fp16=False,
+    freeze_body=False
 ):
     if fp16:
         print("Using FP16")
@@ -42,6 +43,9 @@ def train(
         max_source_tokens_count,
         max_target_tokens_count)
     model = MBartForConditionalGeneration.from_pretrained(model_name)
+    if freeze_body:
+        for param in model.model.parameters():
+            param.requires_grad = False
     training_args = TrainingArguments(
         output_dir=output_dir,
         per_device_train_batch_size=batch_size,
@@ -91,6 +95,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-grad-norm", type=float, default=0.1)
     parser.add_argument("--weight-decay", type=float, default=0.01)
     parser.add_argument("--label-smoothing-factor", type=float, default=0.1)
+    parser.add_argument("--freeze-body", action='store_true')
     parser.add_argument("--fp16", action='store_true')
     parser.add_argument("--fp16-opt-level", type=str, default="O1")
 
