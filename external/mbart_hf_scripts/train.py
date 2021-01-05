@@ -60,7 +60,7 @@ def train(
         weight_decay=weight_decay,
         fp16=fp16,
         fp16_opt_level=fp16_opt_level,
-        label_smoothing_factor=0.1,
+        label_smoothing_factor=label_smoothing_factor,
         evaluation_strategy="steps"
     )
     trainer = Trainer(
