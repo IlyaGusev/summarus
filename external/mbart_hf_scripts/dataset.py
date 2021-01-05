@@ -8,7 +8,9 @@ class MBartSummarizationDataset(Dataset):
         input_file,
         tokenizer,
         max_source_tokens_count,
-        max_target_tokens_count
+        max_target_tokens_count,
+        src_lang="ru_RU",
+        tgt_lang="ru_RU"
     ):
         self.pairs = []
         with open(input_file, "r") as f:
@@ -20,6 +22,8 @@ class MBartSummarizationDataset(Dataset):
         self.tokenizer = tokenizer
         self.max_source_tokens_count = max_source_tokens_count
         self.max_target_tokens_count = max_target_tokens_count
+        self.src_lang = src_lang
+        self.tgt_lang = tgt_lang
 
     def __len__(self):
         return len(self.pairs)
@@ -28,8 +32,8 @@ class MBartSummarizationDataset(Dataset):
         source, target = self.pairs[index]
         batch = self.tokenizer.prepare_seq2seq_batch(
             [source],
-            src_lang="ru_RU",
-            tgt_lang="ru_RU",
+            src_lang=self.src_lang,
+            tgt_lang=self.tgt_lang,
             tgt_texts=[target],
             return_tensors="pt",
             padding="max_length",

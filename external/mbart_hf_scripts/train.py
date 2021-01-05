@@ -25,6 +25,8 @@ def train(
     max_source_tokens_count,
     max_target_tokens_count,
     label_smoothing_factor,
+    src_lang,
+    tgt_lang,
     fp16_opt_level,
     fp16=False,
     freeze_body=False
@@ -36,12 +38,18 @@ def train(
         train_file,
         tokenizer,
         max_source_tokens_count,
-        max_target_tokens_count)
+        max_target_tokens_count,
+        src_lang=src_lang,
+        tgt_lang=tgt_lang
+    )
     val_dataset = MBartSummarizationDataset(
         val_file,
         tokenizer,
         max_source_tokens_count,
-        max_target_tokens_count)
+        max_target_tokens_count,
+        src_lang=src_lang,
+        tgt_lang=tgt_lang
+    )
     model = MBartForConditionalGeneration.from_pretrained(model_name)
     if freeze_body:
         for param in model.model.parameters():
@@ -94,6 +102,8 @@ if __name__ == "__main__":
     parser.add_argument("--gradient-accumulation-steps", type=int, default=4)
     parser.add_argument("--max-grad-norm", type=float, default=0.1)
     parser.add_argument("--weight-decay", type=float, default=0.01)
+    parser.add_argument("--src-lang", type=str, default="ru_RU")
+    parser.add_argument("--tgt-lang", type=str, default="ru_RU")
     parser.add_argument("--label-smoothing-factor", type=float, default=0.1)
     parser.add_argument("--freeze-body", action='store_true')
     parser.add_argument("--fp16", action='store_true')
