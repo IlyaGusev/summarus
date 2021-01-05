@@ -24,6 +24,7 @@ def train(
     weight_decay,
     max_source_tokens_count,
     max_target_tokens_count,
+    label_smoothing_factor,
     fp16_opt_level,
     fp16=False
 ):
@@ -89,6 +90,7 @@ if __name__ == "__main__":
     parser.add_argument("--gradient-accumulation-steps", type=int, default=4)
     parser.add_argument("--max-grad-norm", type=float, default=0.1)
     parser.add_argument("--weight-decay", type=float, default=0.01)
+    parser.add_argument("--label-smoothing-factor", type=float, default=0.1)
     parser.add_argument("--fp16", action='store_true')
     parser.add_argument("--fp16-opt-level", type=str, default="O1")
 
