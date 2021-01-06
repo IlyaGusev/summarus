@@ -148,8 +148,9 @@ Prediction scripts:
 ```
 
 #### External models:
-* [gazeta_mbart](https://www.dropbox.com/s/b2auu9dhrm2wj0p/gazeta_mbart_checkpoint_600_160.tar.gz)
-* [gazeta_mbart_lowercase](https://www.dropbox.com/s/k3gsgokq69468jw/gazeta_mbart_lower.tar.gz)
+* [gazeta_mbart (fairseq)](https://www.dropbox.com/s/b2auu9dhrm2wj0p/gazeta_mbart_checkpoint_600_160.tar.gz)
+* [gazeta_mbart (transformers)](https://huggingface.co/IlyaGusev/mbart_ru_sum_gazeta)
+* [gazeta_mbart_lowercase (fairseq)](https://www.dropbox.com/s/k3gsgokq69468jw/gazeta_mbart_lower.tar.gz)
 
 #### Results:
 
