@@ -4,7 +4,6 @@ import re
 import razdel
 import nltk
 
-from summarus import *
 from summarus.util.metrics import print_metrics
 
 
