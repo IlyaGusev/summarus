@@ -15,7 +15,6 @@ Based on the following papers:
 
 ## Contacts
 
-* Gitter chat: [summarus/community](https://gitter.im/summarus/community)
 * Telegram: [@YallenGusev](https://t.me/YallenGusev)
 
 ## Prerequisites
