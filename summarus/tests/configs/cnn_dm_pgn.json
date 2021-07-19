@@ -24,13 +24,6 @@
     "max_decoding_steps": 100,
     "beam_size": 5
   },
-  "iterator": {
-    "type": "bucket",
-    "sorting_keys": [["source_tokens", "num_tokens"]],
-    "batch_size": 5,
-    "padding_noise": 0.0,
-    "cache_instances": true
-  },
   "trainer": {
     "num_epochs": 70,
     "grad_norm": 2.0,
@@ -41,6 +34,14 @@
     "optimizer": {
       "type": "adam",
       "lr": 0.005
+    }
+  },
+  "data_loader": {
+    "batch_sampler": {
+      "type": "bucket",
+      "sorting_keys": ["source_tokens"],
+      "batch_size": 5,
+      "padding_noise": 0.0
     }
   },
   "vocabulary": {
@@ -54,8 +55,7 @@
     "target_namespace": "target_tokens",
     "save_pgn_fields": true,
     "tokenizer": {
-        "type": "word",
-        "word_splitter": "simple"
+        "type": "whitespace"
     }
   }
 }

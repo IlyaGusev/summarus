@@ -3,7 +3,7 @@ import random
 import copy
 import argparse
 
-from rouge import Rouge
+from true_rouge import Rouge
 import razdel
 
 from summarus.util.metrics import print_metrics

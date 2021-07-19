@@ -1,7 +1,7 @@
 from typing import List
 
 import razdel
-from allennlp.data.tokenizers.token import Token
+from allennlp.data.tokenizers.token_class import Token
 from allennlp.data.tokenizers.tokenizer import Tokenizer
 
 

@@ -1,7 +1,7 @@
 import os
 from collections import Counter
 
-from rouge import Rouge
+from true_rouge import Rouge
 from nltk.translate.bleu_score import corpus_bleu
 
 from summarus.util.meteor import Meteor
