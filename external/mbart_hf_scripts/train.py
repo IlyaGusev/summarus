@@ -1,8 +1,5 @@
 import argparse
-import json
-import torch
 from transformers import MBartTokenizer, MBartForConditionalGeneration, TrainingArguments, Trainer
-from transformers.file_utils import is_apex_available
 
 from dataset import MBartSummarizationDataset
 

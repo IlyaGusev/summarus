@@ -56,9 +56,11 @@ class Seq2Seq(SimpleSeq2Seq):
             self._output_projection_layer = Linear(self._decoder_output_dim, num_classes)
         self._bleu = False
 
-    def _prepare_output_projections(self,
-                                    last_predictions: torch.Tensor,
-                                    state: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:  # pylint: disable=line-too-long
+    def _prepare_output_projections(
+        self,
+        last_predictions: torch.Tensor,
+        state: Dict[str, torch.Tensor]
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:  # pylint: disable=line-too-long
         # shape: (group_size, max_input_sequence_length, encoder_output_dim)
         encoder_outputs = state["encoder_outputs"]
         # shape: (group_size, max_input_sequence_length)
@@ -93,4 +95,3 @@ class Seq2Seq(SimpleSeq2Seq):
             output_projections = self._output_projection_layer(decoder_hidden)
 
         return output_projections, state
-

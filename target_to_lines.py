@@ -1,6 +1,5 @@
 import argparse
 
-from allennlp.common.params import Params
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.models.archival import load_archive
 

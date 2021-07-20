@@ -49,4 +49,3 @@ class CNNDailyMailJSONReader(SummarizationReader):
 
     def parse_set(self, path):
         return parse_cnn_dm_json(path)
-

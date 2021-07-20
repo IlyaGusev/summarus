@@ -56,7 +56,6 @@ class PointerGeneratorNetwork(Model):
         # Decoder
         self._target_embedding_dim = target_embedding_dim or source_embedder.get_output_dim()
         self._num_classes = self.vocab.get_vocab_size(target_namespace)
-        #self._target_embedder = Embedding(self._num_classes, self._target_embedding_dim)
         self._target_embedder = Embedding(self._target_embedding_dim, self._num_classes)
 
         self._decoder_input_dim = self._encoder_output_dim + self._target_embedding_dim

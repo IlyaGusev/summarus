@@ -63,4 +63,3 @@ def print_metrics(refs, hyps, language, metric="all", meteor_jar=None):
         print("Dup 2-grams:\t{:3.1f}".format(metrics["duplicate_ngrams"][2] * 100.0))
         print("Dup 3-grams:\t{:3.1f}".format(metrics["duplicate_ngrams"][3] * 100.0))
 
-

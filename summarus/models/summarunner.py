@@ -55,7 +55,7 @@ class SummaRuNNer(Model):
 
         self._use_output_bias = use_output_bias
         if use_output_bias:
-            self._output_bias = Parameter(torch.zeros(1).uniform_(-0.1,0.1), requires_grad=True)
+            self._output_bias = Parameter(torch.zeros(1).uniform_(-0.1, 0.1), requires_grad=True)
 
         self._use_novelty = use_novelty
         if use_novelty:
@@ -108,7 +108,10 @@ class SummaRuNNer(Model):
             for sentence_num in range(sentences_count):
                 novelty_intermediate = self._novelty_linear_layer(torch.tanh(summary_representation)).unsqueeze(2)
                 sentence_num_state = h_sentences[:, sentence_num, :]
-                novelty[:, sentence_num] = -torch.bmm(sentence_num_state.unsqueeze(1), novelty_intermediate).squeeze(2).squeeze(1)
+                novelty[:, sentence_num] = -torch.bmm(
+                    sentence_num_state.unsqueeze(1),
+                    novelty_intermediate
+                ).squeeze(2).squeeze(1)
                 predictions[:, sentence_num] += novelty[:, sentence_num]
                 probabilities = torch.sigmoid(predictions[:, sentence_num])
                 summary_representation += torch.mv(sentence_num_state.transpose(0, 1), probabilities)
@@ -128,4 +131,3 @@ class SummaRuNNer(Model):
         # shape: (batch_size, max_input_sequence_length, encoder_output_dim)
         encoder_outputs = self._sentence_encoder(embedded_input, source_mask)
         return encoder_outputs
-

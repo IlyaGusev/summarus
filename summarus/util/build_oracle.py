@@ -1,12 +1,10 @@
 import json
-import random
 import copy
 import argparse
 
 from true_rouge import Rouge
 import razdel
 
-from summarus.util.metrics import print_metrics
 from summarus.readers.gazeta_reader import parse_gazeta_json
 
 
@@ -18,6 +16,7 @@ def build_oracle_summary_greedy(text, gold_summary, calc_score, lower=True, max_
     gold_summary = gold_summary.lower() if lower else gold_summary
     original_sentences = [s.text for s in razdel.sentenize(text)]
     sentences = [s.lower() if lower else s for s in original_sentences][:max_sentences]
+
     def indices_to_text(indices):
         return " ".join([sentences[index] for index in sorted(list(indices))])
 
@@ -55,7 +54,10 @@ def calc_single_score(pred_summary, gold_summary, rouge):
 
 def build_oracle_records(records, nrows=None, lower=True):
     rouge = Rouge()
-    calc_score = lambda x, y: calc_single_score(x, y, rouge)
+
+    def calc_score(x, y):
+        return calc_single_score(x, y, rouge)
+
     new_records = []
     for i, (text, summary) in enumerate(records):
         if nrows is not None and i >= nrows:

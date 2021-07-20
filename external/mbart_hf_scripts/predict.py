@@ -1,5 +1,4 @@
 import argparse
-import json
 import torch
 from transformers import MBartTokenizer, MBartForConditionalGeneration
 
@@ -29,7 +28,7 @@ def predict(
     for batch in test_dataset:
         summaries = model.generate(
             input_ids=batch["input_ids"].to(device),
-            attention_mask=dct["attention_mask"].to(device),
+            attention_mask=batch["attention_mask"].to(device),
             num_beams=5,
             length_penalty=1.0,
             max_length=max_target_tokens_count + 2,
