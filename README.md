@@ -1,6 +1,6 @@
 # summarus
 
-[![Build Status](https://travis-ci.com/IlyaGusev/summarus.svg?branch=master)](https://travis-ci.com/IlyaGusev/summarus)
+[![Tests Status](https://github.com/IlyaGusev/summarus/actions/workflows/python-package.yml/badge.svg)](https://github.com/IlyaGusev/summarus/actions/workflows/python-package.yml)
 [![Code Climate](https://codeclimate.com/github/IlyaGusev/summarus/badges/gpa.svg)](https://codeclimate.com/github/IlyaGusev/summarus)
 
 Abstractive and extractive summarization models, mostly for Russian language. Building on top of [AllenNLP](https://allennlp.org/)
