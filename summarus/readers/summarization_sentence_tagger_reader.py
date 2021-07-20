@@ -17,9 +17,8 @@ class SummarizationSentencesTaggerReader(DatasetReader):
                  source_token_indexers: Dict[str, TokenIndexer] = None,
                  max_sentences_count: int = 100,
                  sentence_max_tokens: int = 100,
-                 lowercase: bool = True,
-                 lazy: bool = True) -> None:
-        super().__init__(lazy=lazy)
+                 lowercase: bool = True) -> None:
+        super().__init__()
 
         self._tokenizer = tokenizer
         self._lowercase = lowercase
