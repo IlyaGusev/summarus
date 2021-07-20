@@ -1,4 +1,3 @@
-import os
 from typing import Dict
 
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
@@ -6,7 +5,6 @@ from allennlp.data.tokenizers.tokenizer import Tokenizer
 from allennlp.data.token_indexers.token_indexer import TokenIndexer
 
 from summarus.readers.summarization_reader import SummarizationReader
-from summarus.readers.cnn_dailymail_reader import get_article_and_abstract
 
 
 @DatasetReader.register("contracts")

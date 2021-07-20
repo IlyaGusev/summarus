@@ -72,8 +72,8 @@ def get_article_and_abstract(story_file, encoding="utf-8", fix_period=True) -> T
 class CNNDailyMailReader(SummarizationReader):
     def __init__(self,
                  tokenizer: Tokenizer,
-                 cnn_tokenized_dir: str=None,
-                 dm_tokenized_dir: str=None,
+                 cnn_tokenized_dir: str = None,
+                 dm_tokenized_dir: str = None,
                  source_token_indexers: Dict[str, TokenIndexer] = None,
                  target_token_indexers: Dict[str, TokenIndexer] = None,
                  source_max_tokens: int = 400,
@@ -82,8 +82,7 @@ class CNNDailyMailReader(SummarizationReader):
                  target_namespace: str = "target_tokens",
                  save_copy_fields: bool = False,
                  save_pgn_fields: bool = False,
-                 lowercase: bool = True,
-                 lazy: bool = True) -> None:
+                 lowercase: bool = True) -> None:
         super().__init__(
             tokenizer=tokenizer,
             source_token_indexers=source_token_indexers,
@@ -94,8 +93,7 @@ class CNNDailyMailReader(SummarizationReader):
             target_namespace=target_namespace,
             save_copy_fields=save_copy_fields,
             save_pgn_fields=save_pgn_fields,
-            lowercase=lowercase,
-            lazy=lazy
+            lowercase=lowercase
         )
 
         self._cnn_tokenized_dir = cnn_tokenized_dir

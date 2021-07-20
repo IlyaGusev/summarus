@@ -22,9 +22,8 @@ class SummarizationReader(DatasetReader):
                  target_namespace: str = "target_tokens",
                  save_copy_fields: bool = False,
                  save_pgn_fields: bool = False,
-                 lowercase: bool = True,
-                 lazy: bool = True) -> None:
-        super().__init__(lazy=lazy)
+                 lowercase: bool = True) -> None:
+        super().__init__()
 
         assert save_pgn_fields or save_copy_fields or (not save_pgn_fields and not save_copy_fields)
 
@@ -71,26 +70,23 @@ class SummarizationReader(DatasetReader):
             return tokens
 
         source_tokens = prepare_text(source, self._source_max_tokens)
+        if self._save_copy_fields:
+            source_tokens = source_tokens[1:-1]
         source_tokens_indexed = TextField(source_tokens, self._source_token_indexers)
         result = {'source_tokens': source_tokens_indexed}
         meta_fields = {}
 
-        if self._save_copy_fields:
-            source_to_target_field = NamespaceSwappingField(source_tokens[1:-1], self._target_namespace)
-            result["source_to_target"] = source_to_target_field
-            meta_fields["source_tokens"] = [x.text for x in source_tokens[1:-1]]
-
-        if self._save_pgn_fields:
+        if self._save_pgn_fields or self._save_copy_fields:
             source_to_target_field = NamespaceSwappingField(source_tokens, self._target_namespace)
             result["source_to_target"] = source_to_target_field
             meta_fields["source_tokens"] = [x.text for x in source_tokens]
 
         if target:
             target_tokens = prepare_text(target, self._target_max_tokens)
-            target_tokens_indexed = TextField(target_tokens, self._target_token_indexers)
-            result['target_tokens'] = target_tokens_indexed
+            target_field = TextField(target_tokens, self._target_token_indexers)
+            result['target_tokens'] = target_field
 
-            if self._save_pgn_fields:
+            if self._save_pgn_fields or self._save_copy_fields:
                 meta_fields["target_tokens"] = [y.text for y in target_tokens]
                 source_and_target_token_ids = self._tokens_to_ids(source_tokens + target_tokens, self._lowercase)
                 source_token_ids = source_and_target_token_ids[:len(source_tokens)]
@@ -98,20 +94,10 @@ class SummarizationReader(DatasetReader):
                 target_token_ids = source_and_target_token_ids[len(source_tokens):]
                 result["target_token_ids"] = ArrayField(np.array(target_token_ids, dtype='long'))
 
-            if self._save_copy_fields:
-                meta_fields["target_tokens"] = [y.text for y in target_tokens[1:-1]]
-                source_and_target_token_ids = self._tokens_to_ids(source_tokens[1:-1] + target_tokens, self._lowercase)
-                source_token_ids = source_and_target_token_ids[:len(source_tokens)-2]
-                result["source_token_ids"] = ArrayField(np.array(source_token_ids))
-                target_token_ids = source_and_target_token_ids[len(source_tokens)-2:]
-                result["target_token_ids"] = ArrayField(np.array(target_token_ids))
-
-        elif self._save_copy_fields:
-            source_token_ids = self._tokens_to_ids(source_tokens[1:-1], self._lowercase)
-            result["source_token_ids"] = ArrayField(np.array(source_token_ids))
-        elif self._save_pgn_fields:
+        elif self._save_pgn_fields or self._save_copy_fields:
             source_token_ids = self._tokens_to_ids(source_tokens, self._lowercase)
             result["source_token_ids"] = ArrayField(np.array(source_token_ids))
+
         if self._save_copy_fields or self._save_pgn_fields:
             result["metadata"] = MetadataField(meta_fields)
         return Instance(result)

@@ -7,7 +7,7 @@ from allennlp.data.vocabulary import Vocabulary
 from allennlp.modules import TextFieldEmbedder, Seq2SeqEncoder
 from allennlp.models.model import Model
 from allennlp.modules import Attention
-from allennlp.models.encoder_decoders.simple_seq2seq import SimpleSeq2Seq
+from allennlp_models.generation.models.simple_seq2seq import SimpleSeq2Seq
 
 
 @Model.register("seq2seq")
@@ -26,16 +26,16 @@ class Seq2Seq(SimpleSeq2Seq):
                  projection_dim: int = None,
                  tie_embeddings: bool = False) -> None:
         super(Seq2Seq, self).__init__(
-            vocab,
-            source_embedder,
-            encoder,
-            max_decoding_steps,
-            attention,
-            None,
-            beam_size,
-            target_namespace,
-            target_embedding_dim,
-            scheduled_sampling_ratio
+            vocab=vocab,
+            source_embedder=source_embedder,
+            encoder=encoder,
+            max_decoding_steps=max_decoding_steps,
+            attention=attention,
+            use_bleu=False,
+            beam_size=beam_size,
+            target_namespace=target_namespace,
+            target_embedding_dim=target_embedding_dim,
+            scheduled_sampling_ratio=scheduled_sampling_ratio
         )
         use_projection = use_projection or projection_dim is not None
 
@@ -56,9 +56,11 @@ class Seq2Seq(SimpleSeq2Seq):
             self._output_projection_layer = Linear(self._decoder_output_dim, num_classes)
         self._bleu = False
 
-    def _prepare_output_projections(self,
-                                    last_predictions: torch.Tensor,
-                                    state: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:  # pylint: disable=line-too-long
+    def _prepare_output_projections(
+        self,
+        last_predictions: torch.Tensor,
+        state: Dict[str, torch.Tensor]
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:  # pylint: disable=line-too-long
         # shape: (group_size, max_input_sequence_length, encoder_output_dim)
         encoder_outputs = state["encoder_outputs"]
         # shape: (group_size, max_input_sequence_length)
@@ -93,4 +95,3 @@ class Seq2Seq(SimpleSeq2Seq):
             output_projections = self._output_projection_layer(decoder_hidden)
 
         return output_projections, state
-

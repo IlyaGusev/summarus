@@ -1,7 +1,7 @@
 import os
 from collections import Counter
 
-from rouge import Rouge
+from true_rouge import Rouge
 from nltk.translate.bleu_score import corpus_bleu
 
 from summarus.util.meteor import Meteor
@@ -62,5 +62,4 @@ def print_metrics(refs, hyps, language, metric="all", meteor_jar=None):
         print("Dup 1-grams:\t{:3.1f}".format(metrics["duplicate_ngrams"][1] * 100.0))
         print("Dup 2-grams:\t{:3.1f}".format(metrics["duplicate_ngrams"][2] * 100.0))
         print("Dup 3-grams:\t{:3.1f}".format(metrics["duplicate_ngrams"][3] * 100.0))
-
 

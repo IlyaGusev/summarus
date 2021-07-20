@@ -41,7 +41,7 @@ class BahdanauAttention(Attention):
     def _forward_internal(self,
                           decoder_state: torch.Tensor,
                           encoder_outputs: torch.Tensor,
-                          coverage: torch.Tensor=None):
+                          coverage: torch.Tensor = None):
         batch_size = encoder_outputs.size(0)
         source_length = encoder_outputs.size(1)
 
@@ -58,4 +58,3 @@ class BahdanauAttention(Attention):
             features = features + self._bias
         scores = self._v(torch.tanh(features)).squeeze(2)
         return scores
-

@@ -28,12 +28,13 @@
     "max_decoding_steps": 100,
     "beam_size": 5
   },
-  "iterator": {
-    "type": "bucket",
-    "sorting_keys": [["source_tokens", "num_tokens"]],
-    "batch_size": 5,
-    "padding_noise": 0.0,
-    "cache_instances": true
+  "data_loader": {
+    "batch_sampler": {
+      "type": "bucket",
+      "sorting_keys": ["source_tokens"],
+      "batch_size": 5,
+      "padding_noise": 0.0
+    }
   },
   "trainer": {
     "num_epochs": 50,
@@ -53,8 +54,7 @@
     "source_max_tokens": 400,
     "target_max_tokens": 100,
     "tokenizer": {
-        "type": "word",
-        "word_splitter": "simple"
+        "type": "whitespace"
     }
   }
 }

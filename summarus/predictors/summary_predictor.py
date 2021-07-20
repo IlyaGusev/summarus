@@ -16,7 +16,7 @@ class SummaryPredictor(Predictor):
         self._fix_subwords = fix_subwords
 
     def _process_output(self, output) -> str:
-        tokens = output["predicted_tokens"]
+        tokens = output["predicted_tokens"][0]
         text = "".join(tokens).replace("▁", " ").strip() if self._fix_subwords else " ".join(tokens).strip()
         return text
 

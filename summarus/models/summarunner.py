@@ -55,16 +55,16 @@ class SummaRuNNer(Model):
 
         self._use_output_bias = use_output_bias
         if use_output_bias:
-            self._output_bias = Parameter(torch.zeros(1).uniform_(-0.1,0.1), requires_grad=True)
+            self._output_bias = Parameter(torch.zeros(1).uniform_(-0.1, 0.1), requires_grad=True)
 
         self._use_novelty = use_novelty
         if use_novelty:
             self._novelty_linear_layer = Linear(self._h_sentence_dim, self._h_sentence_dim, bias=False)
 
     def forward(self,
-                source_sentences: Dict[str, torch.Tensor],
+                source_sentences: Dict[str, Dict[str, torch.Tensor]],
                 sentences_tags: torch.LongTensor = None) -> Dict[str, torch.Tensor]:
-        tokens = source_sentences["tokens"]
+        tokens = source_sentences["tokens"]["tokens"]
         batch_size = tokens.size(0)
         sentences_count = tokens.size(1)
         max_sentence_length = tokens.size(2)
@@ -108,7 +108,10 @@ class SummaRuNNer(Model):
             for sentence_num in range(sentences_count):
                 novelty_intermediate = self._novelty_linear_layer(torch.tanh(summary_representation)).unsqueeze(2)
                 sentence_num_state = h_sentences[:, sentence_num, :]
-                novelty[:, sentence_num] = -torch.bmm(sentence_num_state.unsqueeze(1), novelty_intermediate).squeeze(2).squeeze(1)
+                novelty[:, sentence_num] = -torch.bmm(
+                    sentence_num_state.unsqueeze(1),
+                    novelty_intermediate
+                ).squeeze(2).squeeze(1)
                 predictions[:, sentence_num] += novelty[:, sentence_num]
                 probabilities = torch.sigmoid(predictions[:, sentence_num])
                 summary_representation += torch.mv(sentence_num_state.transpose(0, 1), probabilities)
@@ -122,10 +125,9 @@ class SummaRuNNer(Model):
 
     def _encode(self, source_tokens: Dict[str, torch.Tensor]) -> torch.Tensor:
         # shape: (batch_size, max_input_sequence_length, encoder_input_dim)
-        embedded_input = self._source_embedder(source_tokens)
+        embedded_input = self._source_embedder({"tokens": source_tokens})
         # shape: (batch_size, max_input_sequence_length)
-        source_mask = util.get_text_field_mask(source_tokens)
+        source_mask = util.get_text_field_mask({"tokens": source_tokens})
         # shape: (batch_size, max_input_sequence_length, encoder_output_dim)
         encoder_outputs = self._sentence_encoder(embedded_input, source_mask)
         return encoder_outputs
-

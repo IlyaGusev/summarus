@@ -4,6 +4,7 @@ import math
 
 import razdel
 
+
 class Intervals:
     def __init__(self):
         self.intervals = []
@@ -38,9 +39,9 @@ def find_acs(s1, s2, threshold=2):
     cs.sort(key=lambda x: -x[0])
     answer = []
     intervals = Intervals()
-    for l, seq, i, j in cs:
+    for a, seq, i, j in cs:
         if intervals.try_add((i, j)):
-            answer.append(l)
+            answer.append(a)
     return answer
 
 
@@ -53,4 +54,3 @@ def calc_extraction_score(text, summary, threshold=2):
         s = s/len(summary_tokens)
         answer += s * (math.exp(s-1) - (1-s)/math.exp(1))
     return answer, acs[0] / len(summary_tokens) if acs else 0.0
-
