@@ -41,13 +41,13 @@
     "max_vocab_size": 200
   },
   "trainer": {
-    "num_epochs": 150,
+    "num_epochs": 80,
     "grad_norm": 5.0,
     "cuda_device": -1,
     "shuffle": false,
     "optimizer": {
       "type": "adam",
-      "lr": 0.01
+      "lr": 0.005
     }
   },
   "reader": {

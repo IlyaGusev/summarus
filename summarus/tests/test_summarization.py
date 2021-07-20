@@ -1,3 +1,4 @@
+import random
 import unittest
 import os
 import tempfile
@@ -16,13 +17,22 @@ from allennlp.models.model import Model
 from summarus.settings import TEST_URLS_FILE, TEST_CONFIG_DIR, TEST_STORIES_DIR, RIA_EXAMPLE_FILE
 
 
+def set_random_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:2"
+    os.environ["PL_GLOBAL_SEED"] = str(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+
+
 class TestSummarizationModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        seed = 1337
-        torch.manual_seed(seed)
-        np.random.seed(seed)
-        torch.backends.cudnn.set_flags(True, False, True, True)
+        set_random_seed(1337)
         cls.params = {}
         for file_name in os.listdir(TEST_CONFIG_DIR):
             if not file_name.endswith(".json"):
