@@ -1,8 +1,13 @@
-numpy >= 1.12.1
+# NLP
 nltk >= 3.4
 razdel >= 0.4.0
-beautifulsoup4 >= 4.9.0
 sentencepiece >= 0.1.85
-allennlp == 2.5.0
-flask >= 1.1.1
 git+git://github.com/IlyaGusev/rouge.git@84f2530
+
+# AllenNLP
+allennlp == 2.5.0
+allennlp-models == 2.5.0
+
+# Other
+beautifulsoup4 >= 4.9.0
+flask >= 1.1.1
