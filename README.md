@@ -161,3 +161,9 @@ Prediction scripts:
 | gazeta_summarunner_3kk    | 31.6  | 13.7  | 27.1  | 26.0   | 46.3 |
 | gazeta_mbart              | 32.6  | 14.6  | 28.2  | 25.7   | 49.8 |
 | gazeta_mbart_lower        | 32.7  | 14.7  | 28.3  | 25.8   | 48.7 |
+
+
+### Demo:
+```
+python demo/server.py --include-package summarus --model-dir <model_dir> --host <host> --port <port>
+```
