@@ -8,7 +8,7 @@ import os
 from allennlp.common.checks import check_for_gpu
 from allennlp.models.archival import load_archive
 from allennlp.predictors import Predictor
-from allennlp.common.util import import_submodules
+from allennlp.common.util import import_module_and_submodules
 from flask import Flask, request, Response, jsonify
 from flask import render_template
 from flask_cors import CORS
@@ -53,7 +53,7 @@ def make_app(models, predictors, title) -> Flask:
 
 def main(model_dir, predictors, cuda_device, title, host, port, include_package):
     for package_name in include_package:
-        import_submodules(package_name)
+        import_module_and_submodules(package_name)
     check_for_gpu(cuda_device)
 
     models = dict()
