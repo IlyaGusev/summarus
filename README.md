@@ -5,6 +5,8 @@
 
 Abstractive and extractive summarization models, mostly for Russian language. Building on top of [AllenNLP](https://allennlp.org/)
 
+You can also checkout MBART-based Russian summarization model on Huggingface:[mbart_ru_sum_gazeta](https://huggingface.co/IlyaGusev/mbart_ru_sum_gazeta)
+
 Based on the following papers:
 * [SummaRuNNer: A Recurrent Neural Network based Sequence Model for Extractive Summarization of Documents](https://arxiv.org/abs/1611.04230)
 * [Get To The Point: Summarization with Pointer-Generator Networks](https://arxiv.org/abs/1704.04368)
