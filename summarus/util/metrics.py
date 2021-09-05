@@ -66,7 +66,7 @@ def calc_metrics(
     if metric in ("duplicate_ngrams", "all"):
         metrics["duplicate_ngrams"] = dict()
         metrics["duplicate_ngrams"].update(calc_duplicate_n_grams_rate(hyps))
-    if metric in ("bert_score", "all") and torch.cuda.is_available():
+    if metric in ("bert_score",) and torch.cuda.is_available():
         bert_scores, hash_code = calc_bert_score(hyps, refs, bert_score_model)
         metrics["bert_score_{}".format(hash_code)] = bert_scores
     return metrics
