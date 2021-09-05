@@ -30,6 +30,7 @@ def calc_bert_score(hyps, refs, bert_score_model):
         model_type=bert_score_model,
         num_layers=10,
         verbose=False,
+        idf=True,
         batch_size=32,
         return_hash=True
     )
