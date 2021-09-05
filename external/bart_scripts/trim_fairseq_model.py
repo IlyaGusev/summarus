@@ -27,4 +27,3 @@ if __name__ == '__main__':
         del model['last_optimizer_state']['state'][key]['exp_avg']
 
     torch.save(model, f=open(args.fout, 'wb'))
-

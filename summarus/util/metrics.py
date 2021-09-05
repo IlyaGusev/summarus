@@ -3,6 +3,7 @@ from collections import Counter
 
 from true_rouge import Rouge
 from nltk.translate.bleu_score import corpus_bleu
+import torch
 
 from summarus.util.meteor import Meteor
 
@@ -21,7 +22,32 @@ def calc_duplicate_n_grams_rate(documents):
             for n in range(1, 5)}
 
 
-def calc_metrics(refs, hyps, language, metric="all", meteor_jar=None):
+def calc_bert_score(hyps, refs, bert_score_model):
+    import bert_score
+    all_preds, hash_code = bert_score.score(
+        hyps,
+        refs,
+        model_type=bert_score_model,
+        num_layers=10,
+        verbose=False,
+        batch_size=32,
+        return_hash=True
+    )
+    avg_scores = [s.mean(dim=0) for s in all_preds]
+    return {
+        "p": avg_scores[0].cpu().item(),
+        "r": avg_scores[1].cpu().item(),
+        "f": avg_scores[2].cpu().item()
+    }, hash_code
+
+
+def calc_metrics(
+    refs, hyps,
+    language,
+    metric="all",
+    meteor_jar=None,
+    bert_score_model="DeepPavlov/rubert-base-cased"
+):
     metrics = dict()
     metrics["count"] = len(hyps)
     metrics["ref_example"] = refs[-1]
@@ -39,6 +65,9 @@ def calc_metrics(refs, hyps, language, metric="all", meteor_jar=None):
     if metric in ("duplicate_ngrams", "all"):
         metrics["duplicate_ngrams"] = dict()
         metrics["duplicate_ngrams"].update(calc_duplicate_n_grams_rate(hyps))
+    if metric in ("bert_score", "all") and torch.cuda.is_available():
+        bert_scores, hash_code = calc_bert_score(hyps, refs, bert_score_model)
+        metrics["bert_score_{}".format(hash_code)] = bert_scores
     return metrics
 
 
@@ -62,4 +91,7 @@ def print_metrics(refs, hyps, language, metric="all", meteor_jar=None):
         print("Dup 1-grams:\t{:3.1f}".format(metrics["duplicate_ngrams"][1] * 100.0))
         print("Dup 2-grams:\t{:3.1f}".format(metrics["duplicate_ngrams"][2] * 100.0))
         print("Dup 3-grams:\t{:3.1f}".format(metrics["duplicate_ngrams"][3] * 100.0))
-
+    for key, value in metrics.items():
+        if "bert_score" not in key:
+            continue
+        print("{}:\t{:3.1f}".format(key, value["f"] * 100.0))

@@ -419,7 +419,9 @@ class PointerGeneratorNetwork(Model):
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
         if not self._use_coverage:
             return {}
-        avg_coverage_loss = self._coverage_loss_sum / self._coverage_iterations if self._coverage_iterations != 0 else 0.0
+        avg_coverage_loss = 0.0
+        if self._coverage_iterations != 0:
+            avg_coverage_loss = self._coverage_loss_sum / self._coverage_iterations
         avg_p_gen = self._p_gen_sum / self._p_gen_iterations if self._p_gen_iterations != 0 else 0.0
         metrics = {"coverage_loss": avg_coverage_loss, "p_gen": avg_p_gen}
         if reset:
