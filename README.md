@@ -173,7 +173,7 @@ python demo/server.py --include-package summarus --model-dir <model_dir> --host 
 ## Citations
 Headline generation (PGN):
 ```bibtex
-@conference{Gusev2019headlines,
+@article{Gusev2019headlines,
     author={Gusev, I.O.},
     title={Importance of copying mechanism for news headline generation},
     journal={Komp'juternaja Lingvistika i Intellektual'nye Tehnologii},
