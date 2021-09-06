@@ -169,3 +169,33 @@ Prediction scripts:
 ```
 python demo/server.py --include-package summarus --model-dir <model_dir> --host <host> --port <port>
 ```
+
+### Cite:
+Headline generation:
+```bibtex
+@conference{Gusev2019headlines,
+    author={Gusev, I.O.},
+    title={Importance of copying mechanism for news headline generation},
+    journal={Komp'juternaja Lingvistika i Intellektual'nye Tehnologii},
+    year={2019},
+    volume={2019-May},
+    number={18},
+    pages={229-236}
+}
+
+```
+
+Summarization:
+```bibtex
+@InProceedings{gusev2020gazeta,
+    author="Gusev, Ilya",
+    editor="Filchenkov, Andrey and Kauttonen, Janne and Pivovarova, Lidia",
+    title="Dataset for Automatic Summarization of Russian News",
+    booktitle="Artificial Intelligence and Natural Language",
+    year="2020",
+    publisher="Springer International Publishing",
+    address="Cham",
+    pages="122--134",
+    isbn="978-3-030-59082-6"
+}
+```
