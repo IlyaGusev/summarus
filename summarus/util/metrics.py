@@ -22,16 +22,25 @@ def calc_duplicate_n_grams_rate(documents):
             for n in range(1, 5)}
 
 
-def calc_bert_score(hyps, refs, bert_score_model):
+def calc_bert_score(
+    hyps,
+    refs,
+    lang="ru",
+    bert_score_model=None,
+    num_layers=None,
+    idf=False,
+    batch_size=32
+):
     import bert_score
     all_preds, hash_code = bert_score.score(
         hyps,
         refs,
+        lang=lang,
         model_type=bert_score_model,
-        num_layers=10,
+        num_layers=num_layers,
         verbose=False,
-        idf=True,
-        batch_size=32,
+        idf=idf,
+        batch_size=batch_size,
         return_hash=True
     )
     avg_scores = [s.mean(dim=0) for s in all_preds]
@@ -46,8 +55,7 @@ def calc_metrics(
     refs, hyps,
     language,
     metric="all",
-    meteor_jar=None,
-    bert_score_model="DeepPavlov/rubert-base-cased"
+    meteor_jar=None
 ):
     metrics = dict()
     metrics["count"] = len(hyps)
@@ -67,7 +75,7 @@ def calc_metrics(
         metrics["duplicate_ngrams"] = dict()
         metrics["duplicate_ngrams"].update(calc_duplicate_n_grams_rate(hyps))
     if metric in ("bert_score",) and torch.cuda.is_available():
-        bert_scores, hash_code = calc_bert_score(hyps, refs, bert_score_model)
+        bert_scores, hash_code = calc_bert_score(hyps, refs)
         metrics["bert_score_{}".format(hash_code)] = bert_scores
     return metrics
 
