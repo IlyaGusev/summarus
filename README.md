@@ -180,7 +180,7 @@ Headline generation (PGN):
     year={2019},
     volume={2019-May},
     number={18},
-    pages={229-236}
+    pages={229--236}
 }
 ```
 
@@ -208,7 +208,7 @@ Summarization:
     year="2020",
     publisher="Springer International Publishing",
     address="Cham",
-    pages="122--134",
+    pages="{122--134}",
     isbn="978-3-030-59082-6"
     doi={10.1007/978-3-030-59082-6_9}
 }
