@@ -90,7 +90,7 @@ Prediction script:
 ./predict.sh -t <path_to_test_dataset> -m ria_pgn_24kk.tar.gz -p subwords_summary -L ru 
 ```
 
-#### Results:
+#### Results
 ##### Train dataset: RIA, test dataset: RIA
 
 | Model                     | R-1-f | R-2-f | R-L-f | BLEU  |
@@ -165,7 +165,51 @@ Prediction scripts:
 | gazeta_mbart_lower        | 32.7  | 14.7  | 28.3  | 25.8   | 48.7 |
 
 
-### Demo:
+## Demo
 ```
 python demo/server.py --include-package summarus --model-dir <model_dir> --host <host> --port <port>
+```
+
+## Citations
+Headline generation (PGN):
+```bibtex
+@article{Gusev2019headlines,
+    author={Gusev, I.O.},
+    title={Importance of copying mechanism for news headline generation},
+    journal={Komp'juternaja Lingvistika i Intellektual'nye Tehnologii},
+    year={2019},
+    volume={2019-May},
+    number={18},
+    pages={229--236}
+}
+```
+
+Headline generation (transformers):
+```bibtex
+@InProceedings{Bukhtiyarov2020headlines,
+    author={Bukhtiyarov, Alexey and Gusev, Ilya},
+    title="Advances of Transformer-Based Models for News Headline Generation",
+    booktitle="Artificial Intelligence and Natural Language",
+    year="2020",
+    publisher="Springer International Publishing",
+    address="Cham",
+    pages={54--61},
+    isbn="978-3-030-59082-6",
+    doi={10.1007/978-3-030-59082-6_4}
+}
+```
+
+Summarization:
+```bibtex
+@InProceedings{Gusev2020gazeta,
+    author="Gusev, Ilya",
+    title="Dataset for Automatic Summarization of Russian News",
+    booktitle="Artificial Intelligence and Natural Language",
+    year="2020",
+    publisher="Springer International Publishing",
+    address="Cham",
+    pages="{122--134}",
+    isbn="978-3-030-59082-6",
+    doi={10.1007/978-3-030-59082-6_9}
+}
 ```
