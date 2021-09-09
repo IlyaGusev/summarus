@@ -3,8 +3,8 @@ TASK="$2"
 
 rm -rf "${TASK}-bin/"
 fairseq-preprocess \
-    --source-lang "source" \
-    --target-lang "target" \
+    --source-lang "en_XX" \
+    --target-lang "ru_RU" \
     --trainpref "${TASK}/train.bpe" \
     --validpref "${TASK}/val.bpe" \
     --testpref "${TASK}/test.bpe" \
