@@ -2,8 +2,6 @@ import os
 import argparse
 
 from sentencepiece import SentencePieceProcessor
-from allennlp.common.params import Params
-from allennlp.data.dataset_readers import DatasetReader
 
 from summarus.util.io import read_jsonl
 
