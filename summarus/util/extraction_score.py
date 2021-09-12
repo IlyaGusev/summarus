@@ -1,9 +1,9 @@
 # Based on description from https://arxiv.org/abs/1802.01457
 
 import math
+from functools import lru_cache
 
 import razdel
-
 
 class Intervals:
     def __init__(self):
@@ -45,6 +45,7 @@ def find_acs(s1, s2, threshold=2):
     return answer
 
 
+@lru_cache(maxsize=10)
 def calc_extraction_score(text, summary, threshold=2):
     text_tokens = [t.text for t in razdel.tokenize(text.lower())]
     summary_tokens = [t.text for t in razdel.tokenize(summary.lower())]
