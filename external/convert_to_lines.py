@@ -5,16 +5,22 @@ from sentencepiece import SentencePieceProcessor
 from allennlp.common.params import Params
 from allennlp.data.dataset_readers import DatasetReader
 
-from summarus.readers import *
+from summarus.util.io import read_jsonl
 
 
-def main(train_path, val_path, test_path, config_path, subword_model_path, out_dir,
-         max_text_subwords, max_summary_subwords, source_suffix, target_suffix, insert_tags=False,
-         lowercase=False):
-    params = Params.from_file(config_path)
-    reader_params = params.pop("dataset_reader", default=Params({}))
-    reader = DatasetReader.from_params(reader_params)
-
+def main(
+    train_path,
+    val_path,
+    test_path,
+    subword_model_path,
+    out_dir,
+    max_text_subwords,
+    max_summary_subwords,
+    source_suffix,
+    target_suffix,
+    insert_tags=False,
+    lowercase=False
+):
     processor = SentencePieceProcessor()
     processor.Load(subword_model_path)
 
@@ -30,7 +36,9 @@ def main(train_path, val_path, test_path, config_path, subword_model_path, out_d
              (test_path, test_text_file, test_summary_file))
     for path, text_file_name, summary_file_name in files:
         with open(text_file_name, "w") as text_file, open(summary_file_name, "w") as summary_file:
-            for text, summary in reader.parse_set(path):
+            for r in read_jsonl(path):
+                text = r["text"]
+                summary = r["summary"]
                 if lowercase:
                     text = text.lower()
                     summary = summary.lower()
@@ -55,7 +63,6 @@ if __name__ == "__main__":
     parser.add_argument('--val-path', type=str, required=True)
     parser.add_argument('--test-path', type=str, required=True)
     parser.add_argument('--out-dir', type=str, required=True)
-    parser.add_argument('--config-path', type=str, required=True)
     parser.add_argument('--subword-model-path', type=str, required=True)
     parser.add_argument('--max-text-subwords', type=int, default=None)
     parser.add_argument('--max-summary-subwords', type=int, default=None)
