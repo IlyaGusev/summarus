@@ -128,7 +128,6 @@ echo "File with predictions: ${PRED_FILE}";
 
 echo "Calling target_to_lines.py...";
 eval '${PYTHON_STRING} target_to_lines.py \
-  --archive-file "${MODEL_ARCHIVE_PATH}" \
   --input-file "${TEST_FILE}" \
   --output-file "${REF_FILE}"';
 echo "File with gold summaries: ${REF_FILE}";
