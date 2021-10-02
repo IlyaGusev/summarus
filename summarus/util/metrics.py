@@ -28,7 +28,9 @@ def calc_metrics(refs, hyps, language, metric="all", meteor_jar=None):
     metrics["hyp_example"] = hyps[-1]
     many_refs = [[r] if r is not list else r for r in refs]
     if metric in ("bleu", "all"):
-        metrics["bleu"] = corpus_bleu(many_refs, hyps)
+        t_hyps = [hyp.split(" ") for hyp in hyps]
+        t_refs = [[r.split(" ") for r in rs] for rs in many_refs]
+        metrics["bleu"] = corpus_bleu(t_refs, t_hyps)
     if metric in ("rouge", "all"):
         rouge = Rouge()
         scores = rouge.get_scores(hyps, refs, avg=True)
