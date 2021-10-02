@@ -1,3 +1,4 @@
+import os
 import argparse
 import re
 
@@ -62,6 +63,16 @@ def evaluate(predicted_path,
              tokenize_after=False,
              lower=False,
              meteor_jar=None):
+    assert os.path.exists(gold_path)
+    assert os.path.exists(predicted_path)
+    if max_count is None:
+        with open(gold_path) as gold:
+            gold_num_lines = sum(1 for line in gold)
+        with open(predicted_path) as pred:
+            pred_num_lines = sum(1 for line in pred)
+        msg = "Number of lines in files differ: {} vs {}".format(gold_num_lines, pred_num_lines)
+        assert gold_num_lines == pred_num_lines, msg
+
     hyps = []
     refs = []
     with open(gold_path, "r") as gold, open(predicted_path, "r") as pred:
@@ -80,7 +91,7 @@ def evaluate(predicted_path,
 
 
 if __name__ == "__main__":
-    possible_choices = ("rouge", "bleu", "meteor", "duplicate_ngrams", "all")
+    possible_choices = ("rouge", "bleu", "meteor", "duplicate_ngrams", "all", "bert_score")
     parser = argparse.ArgumentParser()
     parser.add_argument('--predicted-path', type=str, required=True)
     parser.add_argument('--gold-path', type=str, required=True)

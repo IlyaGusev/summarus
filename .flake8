@@ -1,0 +1,12 @@
+[flake8]
+exclude =
+    summarus/models/__init__.py
+    summarus/readers/__init__.py
+    summarus/__init__.py
+    summarus/tokenizers/__init__.py
+    summarus/predictors/__init__.py
+    summarus/util/__init__.py
+    summarus/modules/__init__.py
+    external/onmt_scripts/__init__.py
+ignore = F403,F401,E226,E126
+max-line-length = 120
