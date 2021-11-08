@@ -47,7 +47,7 @@
     "shuffle": false,
     "optimizer": {
       "type": "adam",
-      "lr": 0.005
+      "lr": 0.007
     }
   },
   "reader": {

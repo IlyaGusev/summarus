@@ -34,4 +34,3 @@ if __name__ == "__main__":
     parser.add_argument("--output-summaries-path", type=str, required=True)
     args = parser.parse_args()
     main(**vars(args))
-

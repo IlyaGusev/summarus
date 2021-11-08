@@ -1,4 +1,5 @@
 import json
+import gc
 
 import spacy
 from spacy.tokens import DocBin
@@ -18,6 +19,7 @@ IGNORE_POS_TAGS = (
     "NUM"
 )
 IGNORE_TOKENS = ("-", )
+DOC_BIN_ATTRS = ("HEAD", "DEP", "LEMMA", "POS")
 
 
 def normalize(doc, lowercase=True, ignore_pos=True, ignore_tokens=True):
@@ -39,9 +41,10 @@ def normalize(doc, lowercase=True, ignore_pos=True, ignore_tokens=True):
 
 
 def spacy_serialize(texts, spacy_model, output_path):
-    docs = DocBin()
+    docs = DocBin(attrs=DOC_BIN_ATTRS)
     for doc in tqdm(spacy_model.pipe(texts)):
         docs.add(doc)
+    gc.collect()
     docs.to_disk(output_path)
 
 

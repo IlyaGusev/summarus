@@ -18,7 +18,9 @@ def main(input_path):
         for key2, value2 in values.items():
             if key1 == key2:
                 continue
-            print(key1, key2, pearsonr(value1, value2))
+            correlation, p_value = pearsonr(value1, value2)
+            if p_value < 0.0001:
+                print(key1, key2, correlation)
 
 
 if __name__ == "__main__":

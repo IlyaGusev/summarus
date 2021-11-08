@@ -17,7 +17,7 @@ CUDA_VISIBLE_DEVICES=0 fairseq-train "$DATA_BIN_PATH" \
   --optimizer adam --adam-eps 1e-06 --adam-betas '(0.9, 0.98)' \
   --lr-scheduler polynomial_decay --lr "$LR" --warmup-updates "$WARMUP_UPDATES" \
   --dropout 0.1 --attention-dropout 0.1 --weight-decay 0.01 --clip-norm 0.1 \
-  --max-update "$MAX_UPDATE" \
+  --total-num-update "$MAX_UPDATE" \
   --max-tokens "$MAX_TOKENS" \
   --required-batch-size-multiple 1 \
   --update-freq "$UPDATE_FREQ" \
@@ -29,4 +29,5 @@ CUDA_VISIBLE_DEVICES=0 fairseq-train "$DATA_BIN_PATH" \
   --langs $LANGS \
   --memory-efficient-fp16 \
   --skip-invalid-size-inputs-valid-test \
-  --find-unused-parameters
+  --find-unused-parameters \
+  --no-save-optimizer-state

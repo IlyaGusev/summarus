@@ -17,7 +17,8 @@ def main(
     source_suffix,
     target_suffix,
     insert_tags=False,
-    lowercase=False
+    lowercase=False,
+    buckets_path=None
 ):
     processor = SentencePieceProcessor()
     processor.Load(subword_model_path)
@@ -29,14 +30,37 @@ def main(
     test_text_file = os.path.join(out_dir, "test.{}".format(source_suffix))
     test_summary_file = os.path.join(out_dir, "test.{}".format(target_suffix))
 
-    files = ((train_path, train_text_file, train_summary_file),
-             (val_path, val_text_file, val_summary_file),
-             (test_path, test_text_file, test_summary_file))
+    files = ((val_path, val_text_file, val_summary_file),
+             (test_path, test_text_file, test_summary_file),
+             (train_path, train_text_file, train_summary_file))
     for path, text_file_name, summary_file_name in files:
         with open(text_file_name, "w") as text_file, open(summary_file_name, "w") as summary_file:
             for r in read_jsonl(path):
                 text = r["text"]
                 summary = r["summary"]
+                if buckets_path:
+                    prepend_text = ""
+                    buckets = dict()
+                    with open(buckets_path) as f:
+                        for line in f:
+                            fields = line.strip().split("\t")
+                            key = fields[0]
+                            values = list(map(float, fields[1:]))
+                            buckets[key] = values
+                    stats = r["stats"]
+                    tokens = []
+                    for key, values in buckets.items():
+                        stat = stats[key]
+                        value_index = 0
+                        while value_index < len(values) and values[value_index] < stat:
+                            value_index += 1
+                        value_index -= 1
+                        value_index = max(value_index, 0)
+                        assert values[value_index] <= stat
+                        assert value_index == len(values) - 1 or values[value_index + 1] >= stat
+                        tokens.append(key + str(value_index))
+                    prepend_text = " ".join(tokens)
+                    text = prepend_text + " " + text
                 if lowercase:
                     text = text.lower()
                     summary = summary.lower()
@@ -68,5 +92,6 @@ if __name__ == "__main__":
     parser.add_argument('--target-suffix', type=str, default='bpe.target')
     parser.add_argument('--insert-tags', action='store_true')
     parser.add_argument('--lowercase', action='store_true')
+    parser.add_argument('--buckets-path', type=str, default=None)
     args = parser.parse_args()
     main(**vars(args))

@@ -386,34 +386,34 @@ class PointerGeneratorNetwork(Model):
         return output_dict
 
     def _decode_sample(self, indices, metadata, source_to_target):
-        predicted_tokens = []
-        # Beam search gives us the top k results for each source sentence in the batch
-        # but we just want the single best.
-        if len(indices.shape) > 1:
-            indices = indices[0]
-        indices = list(indices)
-        # Collect indices till the first end_symbol
-        if self._end_index in indices:
-            indices = indices[:indices.index(self._end_index)]
-        # Get all unknown tokens from source
-        original_source_tokens = metadata["source_tokens"]
-        unk_tokens = list()
-        for i, token_vocab_index in enumerate(source_to_target):
-            if token_vocab_index != self._unk_index:
-                continue
-            token = original_source_tokens[i]
-            if token in unk_tokens:
-                continue
-            unk_tokens.append(token)
-
-        for token_vocab_index in indices:
-            if token_vocab_index < self._vocab_size:
-                token = self.vocab.get_token_from_index(token_vocab_index, namespace=self._target_namespace)
-            else:
-                unk_number = token_vocab_index - self._vocab_size
-                token = unk_tokens[unk_number]
-            predicted_tokens.append(token)
-        return [predicted_tokens]
+        all_predicted_tokens = []
+        if len(indices.shape) == 1:
+            indices = [indices]
+        for sample_indices in indices:
+            sample_indices = list(sample_indices)
+            # Collect indices till the first end_symbol
+            if self._end_index in sample_indices:
+                sample_indices = sample_indices[:sample_indices.index(self._end_index)]
+            # Get all unknown tokens from source
+            original_source_tokens = metadata["source_tokens"]
+            unk_tokens = list()
+            for i, token_vocab_index in enumerate(source_to_target):
+                if token_vocab_index != self._unk_index:
+                    continue
+                token = original_source_tokens[i]
+                if token in unk_tokens:
+                    continue
+                unk_tokens.append(token)
+            predicted_tokens = []
+            for token_vocab_index in sample_indices:
+                if token_vocab_index < self._vocab_size:
+                    token = self.vocab.get_token_from_index(token_vocab_index, namespace=self._target_namespace)
+                else:
+                    unk_number = token_vocab_index - self._vocab_size
+                    token = unk_tokens[unk_number]
+                predicted_tokens.append(token)
+            all_predicted_tokens.append(predicted_tokens)
+        return all_predicted_tokens
 
     @overrides
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:

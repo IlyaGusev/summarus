@@ -5,6 +5,7 @@ from functools import lru_cache
 
 import razdel
 
+
 class Intervals:
     def __init__(self):
         self.intervals = []

@@ -9,6 +9,7 @@ from datasets import load_dataset
 from tqdm import tqdm
 from scipy import sparse
 from scipy.sparse.csgraph import maximum_bipartite_matching
+from sentencepiece import SentencePieceProcessor
 
 from summarus.util.spacy import spacy_deserialize, normalize
 from summarus.util.io import write_jsonl
@@ -16,7 +17,7 @@ from summarus.util.extraction_score import calc_extraction_score
 
 
 class TextSummaryScorer:
-    def __init__(self, vocab_file=None):
+    def __init__(self, vocab_file=None, spm_file=None):
         self.word2rank = dict()
         self.idfs = dict()
         self.default_idf = 0.0
@@ -36,19 +37,19 @@ class TextSummaryScorer:
             print("Vocabulary loaded, {} items".format(len(self.idfs)))
             self.default_idf = max(self.idfs.values())
 
-        self.pipiline = {
-            "NbChars": self.char_ratio,
+        if spm_file:
+            self.spm_tokenizer = SentencePieceProcessor()
+            self.spm_tokenizer.Load(spm_file)
+
+        self.pipeline = {
+            "TokensCount": self.count_wordpiece,
             "WordRank": self.word_rank_ratio,
-            "LexSim": self.lexical_similarity,
-            "LevSim": self.levenshtein_similarity,
-            "ExtractionScore": self.extraction_score,
-            "LcsScore": self.lcs_score
+            "LexSim": self.lexical_similarity
         }
-        self.bad_pos_tags = ("PUNCT", "CCONJ", "ADP", "PART", "SCONJ", "PRON", "ADV", "DET", "SYM", "NUM")
 
     def __call__(self, text, summary):
         values = dict()
-        for name, action in self.pipiline.items():
+        for name, action in self.pipeline.items():
             values[name] = action(text, summary)
         return values
 
@@ -66,6 +67,10 @@ class TextSummaryScorer:
         summary = str(summary)
         return (len(summary) / len(text)) if len(text) != 0.0 else 0.0
 
+    def count_wordpiece(self, text, summary):
+        summary = str(summary)
+        return len(self.spm_tokenizer.EncodeAsPieces(summary))
+
     def word_rank_ratio(self, text, summary):
         assert self.word2rank
         summary_score = self._word_rank_score(summary)
@@ -78,15 +83,29 @@ class TextSummaryScorer:
         matching = self._get_matching(src_lemmas, dst_lemmas)
         assert len(matching) == len(src_lemmas)
 
-        src_idf = sum(self.idfs.get(l, self.default_idf) for l, m in zip(src_lemmas, matching) if m != -1)
-        dst_idf = sum(self.idfs.get(dst_lemmas[idx], self.default_idf) for idx in matching if idx != -1)
+        src_idf = 0.0
+        for lemma, match_index in zip(src_lemmas, matching):
+            if match_index != -1:
+                src_idf += self.idfs.get(lemma, self.default_idf)
+        dst_idf = 0.0
+        for match_index in matching:
+            if match_index != -1:
+                lemma = dst_lemmas[match_index]
+                dst_idf += self.idfs.get(lemma, self.default_idf)
 
-        src_denominator = sum(self.idfs.get(l, self.default_idf) for l in src_lemmas) + 1e-10
-        dst_denominator = sum(self.idfs.get(l, self.default_idf) for l in dst_lemmas) + 1e-10
+        src_denominator = sum(self.idfs.get(lemma, self.default_idf) for lemma in src_lemmas)
+        src_denominator += 1e-10
+        dst_denominator = sum(self.idfs.get(lemma, self.default_idf) for lemma in dst_lemmas)
+        dst_denominator += 1e-10
 
         score = 0.5 * (src_idf / src_denominator + dst_idf / dst_denominator)
         score = max(min(score, 1.), 0.)
         return score
+
+    @staticmethod
+    def summary_ttr(text, summary):
+        lemmas = [token.lemma_ for token in summary]
+        return len(set(lemmas)) / len(lemmas)
 
     @staticmethod
     def extraction_score(text, summary):
@@ -104,10 +123,10 @@ class TextSummaryScorer:
     def _word_rank_score(self, text):
         assert self.word2rank
         lemmas = normalize(text)
-        lemmas = [l for l in lemmas if l in self.word2rank]
+        lemmas = [lemma for lemma in lemmas if lemma in self.word2rank]
         if len(lemmas) == 0:
             return np.log(1 + len(self.word2rank))
-        ranks = [self._log_rank(l) for l in lemmas]
+        ranks = [self._log_rank(lemma) for lemma in lemmas]
         return np.quantile(ranks, 0.75)
 
     @staticmethod
@@ -128,23 +147,29 @@ def main(
     dataset_version,
     dataset_split,
     vocab_file,
-    output_path
+    output_path,
+    spm_path,
+    head
 ):
     dataset = load_dataset(dataset_name, script_version=dataset_version)
     dataset = list(dataset[dataset_split])
-    scorer = TextSummaryScorer(vocab_file)
+
     texts_analyzes = spacy_deserialize(texts_spacy_file)
     summaries_analyzes = spacy_deserialize(summaries_spacy_file)
+
     assert dataset[0]["text"] == str(texts_analyzes[0])
     assert dataset[-1]["text"] == str(texts_analyzes[-1])
     assert dataset[0]["summary"] == str(summaries_analyzes[0])
     assert dataset[-1]["summary"] == str(summaries_analyzes[-1])
 
+    scorer = TextSummaryScorer(vocab_file, spm_path)
     records = list()
-    for r, text_analysis, summary_analysis in tqdm(zip(dataset, texts_analyzes, summaries_analyzes)):
-        values = scorer(text_analysis, summary_analysis)
+    for i, (r, ta, sa) in tqdm(enumerate(zip(dataset, texts_analyzes, summaries_analyzes))):
+        values = scorer(ta, sa)
         r["stats"] = values
         records.append(r)
+        if head and i >= head:
+            break
     write_jsonl(records, output_path)
 
 
@@ -157,5 +182,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset-split", type=str, required=True)
     parser.add_argument("--vocab-file", type=str, required=True)
     parser.add_argument("--output-path", type=str, required=True)
+    parser.add_argument("--spm-path", type=str, required=True)
+    parser.add_argument("--head", type=int, default=None)
     args = parser.parse_args()
     main(**vars(args))
