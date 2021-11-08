@@ -8,7 +8,7 @@ MAX_TOKENS=605
 UPDATE_FREQ=2
 LANGS=ar_AR,cs_CZ,de_DE,en_XX,es_XX,et_EE,fi_FI,fr_XX,gu_IN,hi_IN,it_IT,ja_XX,kk_KZ,ko_KR,lt_LT,lv_LV,my_MM,ne_NP,nl_XX,ro_RO,ru_RU,si_LK,tr_TR,vi_VN,zh_CN
 
-CUDA_VISIBLE_DEVICES=0 fairseq-train "$DATA_BIN_PATH" \
+CUDA_VISIBLE_DEVICES=1 fairseq-train "$DATA_BIN_PATH" \
   --encoder-normalize-before --decoder-normalize-before \
   --arch mbart_large --layernorm-embedding \
   --task translation_from_pretrained_bart \
@@ -27,6 +27,7 @@ CUDA_VISIBLE_DEVICES=0 fairseq-train "$DATA_BIN_PATH" \
   --restore-file "${MBART_PATH}/model.pt" \
   --reset-optimizer --reset-meters --reset-dataloader --reset-lr-scheduler \
   --langs $LANGS \
+  --find-unused-parameters \
   --memory-efficient-fp16 \
   --skip-invalid-size-inputs-valid-test \
   --find-unused-parameters \

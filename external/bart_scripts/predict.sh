@@ -3,7 +3,7 @@ DATA_BIN_PATH="$2"
 SENTENCE_BPE_MODEL="$3"
 OUTPUT_FILE="$4"
 
-fairseq-generate "${DATA_BIN_PATH}" \
+CUDA_VISIBLE_DEVICES=1 fairseq-generate "${DATA_BIN_PATH}" \
   --path "${CHECKPOINT_PATH}" \
   --task translation_from_pretrained_bart \
   --gen-subset test -t ru_RU -s en_XX \
