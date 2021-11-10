@@ -95,19 +95,19 @@ Prediction script:
 
 | Model                     | R-1-f | R-2-f | R-L-f | BLEU  |
 |:--------------------------|:------|:------|:------|:------|
-| ria_copynet_10kk          | 40.0  | 23.3  | 37.5  | 52.6  |
-| ria_pgn_24kk              | 42.3  | 25.1  | 39.6  | 54.2  |
-| ria_mbart                 | 42.8  | 25.5  | 39.9  | 55.1  |
+| ria_copynet_10kk          | 40.0  | 23.3  | 37.5  | -     |
+| ria_pgn_24kk              | 42.3  | 25.1  | 39.6  | -     |
+| ria_mbart                 | 42.8  | 25.5  | 39.9  | -     |
 | First Sentence            | 24.1  | 10.6  | 16.7  | -     |
 
 #### Train dataset: RIA, eval dataset: Lenta
 
 | Model                     | R-1-f | R-2-f | R-L-f | BLEU  |
 |:--------------------------|:------|:------|:------|:------|
-| ria_copynet_10kk          | 25.6  | 12.3  | 23.0  | 36.1  |
-| ria_pgn_24kk              | 26.4  | 12.3  | 24.0  | 39.8  |
-| ria_mbart                 | 30.3  | 14.5  | 27.1  | 43.2  |
-| First Sentence            | 25.5  | 11.2  | 19.2  | 25.5  |
+| ria_copynet_10kk          | 25.6  | 12.3  | 23.0  | -     |
+| ria_pgn_24kk              | 26.4  | 12.3  | 24.0  | -     |
+| ria_mbart                 | 30.3  | 14.5  | 27.1  | -     |
+| First Sentence            | 25.5  | 11.2  | 19.2  | -     |
 
 ## Summarization - CNN/DailyMail
 
@@ -126,7 +126,7 @@ Prediction script:
 
 | Model                     | R-1-f | R-2-f | R-L-f | METEOR | BLEU |
 |:--------------------------|:------|:------|:------|:-------|:-----|
-| cnndm_pgn_25kk            | 38.5  | 16.5  | 33.4  | 17.6   | 47.7 |
+| cnndm_pgn_25kk            | 38.5  | 16.5  | 33.4  | 17.6   | -    |
 
 
 ## Summarization - Gazeta, russian news dataset
@@ -156,13 +156,13 @@ Prediction scripts:
 
 | Model                     | R-1-f | R-2-f | R-L-f | METEOR | BLEU |
 |:--------------------------|:------|:------|:------|:-------|:-----|
-| gazeta_pgn_7kk            | 29.4  | 12.7  | 24.6  | 21.2   | 38.8 |
-| gazeta_pgn_7kk_cov        | 29.8  | 12.8  | 25.4  | 22.1   | 40.8 |
-| gazeta_pgn_25kk           | 29.6  | 12.8  | 24.6  | 21.5   | 39   |
-| gazeta_pgn_words_13kk     | 29.4  | 12.6  | 24.4  | 20.9   | 35.9 |
-| gazeta_summarunner_3kk    | 31.6  | 13.7  | 27.1  | 26.0   | 46.3 |
-| gazeta_mbart              | 32.6  | 14.6  | 28.2  | 25.7   | 49.8 |
-| gazeta_mbart_lower        | 32.7  | 14.7  | 28.3  | 25.8   | 48.7 |
+| gazeta_pgn_7kk            | 29.4  | 12.7  | 24.6  | 21.2   | 9.0  |
+| gazeta_pgn_7kk_cov        | 29.8  | 12.8  | 25.4  | 22.1   | 10.1 |
+| gazeta_pgn_25kk           | 29.6  | 12.8  | 24.6  | 21.5   | 9.3  |
+| gazeta_pgn_words_13kk     | 29.4  | 12.6  | 24.4  | 20.9   | 8.9  |
+| gazeta_summarunner_3kk    | 31.6  | 13.7  | 27.1  | 26.0   | 11.5 |
+| gazeta_mbart              | 32.6  | 14.6  | 28.2  | 25.7   | 12.4 |
+| gazeta_mbart_lower        | 32.7  | 14.7  | 28.3  | 25.8   | 12.5 |
 
 
 ## Demo
