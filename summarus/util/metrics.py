@@ -81,7 +81,7 @@ def calc_metrics(
         bert_scores, hash_code = calc_bert_score(hyps, refs)
         metrics["bert_score_{}".format(hash_code)] = bert_scores
     if metric in ("chrf", "all"):
-        metrics["chrf"] = corpus_chrf(refs, hyps, beta=2.0)
+        metrics["chrf"] = corpus_chrf(refs, hyps, beta=1.0)
     return metrics
 
 
