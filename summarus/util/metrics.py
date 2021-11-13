@@ -3,6 +3,7 @@ from collections import Counter
 
 from true_rouge import Rouge
 from nltk.translate.bleu_score import corpus_bleu
+from nltk.translate.chrf_score import corpus_chrf
 import torch
 
 from summarus.util.meteor import Meteor
@@ -79,6 +80,8 @@ def calc_metrics(
     if metric in ("bert_score",) and torch.cuda.is_available():
         bert_scores, hash_code = calc_bert_score(hyps, refs)
         metrics["bert_score_{}".format(hash_code)] = bert_scores
+    if metric in ("chrf", "all"):
+        metrics["chrf"] = corpus_chrf(refs, hyps, beta=2.0)
     return metrics
 
 
@@ -92,6 +95,8 @@ def print_metrics(refs, hyps, language, metric="all", meteor_jar=None):
 
     if "bleu" in metrics:
         print("BLEU:     \t{:3.1f}".format(metrics["bleu"] * 100.0))
+    if "chrf" in metrics:
+        print("chrF:     \t{:3.1f}".format(metrics["chrf"] * 100.0))
     if "rouge-1" in metrics:
         print("ROUGE-1-F:\t{:3.1f}".format(metrics["rouge-1"]['f'] * 100.0))
         print("ROUGE-2-F:\t{:3.1f}".format(metrics["rouge-2"]['f'] * 100.0))

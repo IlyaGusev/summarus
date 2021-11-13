@@ -91,7 +91,7 @@ def evaluate(predicted_path,
 
 
 if __name__ == "__main__":
-    possible_choices = ("rouge", "bleu", "meteor", "duplicate_ngrams", "all", "bert_score")
+    possible_choices = ("rouge", "bleu", "meteor", "duplicate_ngrams", "all", "bert_score", "chrf")
     parser = argparse.ArgumentParser()
     parser.add_argument('--predicted-path', type=str, required=True)
     parser.add_argument('--gold-path', type=str, required=True)
