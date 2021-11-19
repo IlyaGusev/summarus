@@ -86,6 +86,7 @@ Script for subword model training.
 * [ria_copynet_10kk](https://www.dropbox.com/s/78ni5gnbcjz59ss/ria_copynet_10kk.tar.gz)
 * [ria_pgn_24kk](https://www.dropbox.com/s/6wa1a2qzvqx5tti/ria_pgn_24kk.tar.gz)
 * [ria_mbart](https://www.dropbox.com/s/bhrfd5o5etz8hso/ria_mbart_checkpoint_4.tar.gz)
+* [rubert_telegram_headlines](https://huggingface.co/IlyaGusev/rubert_telegram_headlines)
 
 Prediction script:
 ```
