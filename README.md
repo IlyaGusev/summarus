@@ -79,11 +79,14 @@ Script for subword model training.
 * Lenta original dataset: https://github.com/yutkin/Lenta.Ru-News-Dataset
 * Lenta train/val/test: https://www.dropbox.com/s/v9i2nh12a4deuqj/lenta.tar.gz
 * Lenta dataset preprocessed for mBART: https://www.dropbox.com/s/4oo8jazmw3izqvr/lenta_mbart_data_512_200.tar.gz
+* Telegram train dataset with split: https://www.dropbox.com/s/ykqk49a8avlmnaf/ru_all_split.tar.gz
+* Telegram test dataset with multiple references: https://github.com/dialogue-evaluation/Russian-News-Clustering-and-Headline-Generation/blob/main/data/headline_generation/headline_generation_answers.jsonl
 
 #### Models:
 * [ria_copynet_10kk](https://www.dropbox.com/s/78ni5gnbcjz59ss/ria_copynet_10kk.tar.gz)
 * [ria_pgn_24kk](https://www.dropbox.com/s/6wa1a2qzvqx5tti/ria_pgn_24kk.tar.gz)
 * [ria_mbart](https://www.dropbox.com/s/bhrfd5o5etz8hso/ria_mbart_checkpoint_4.tar.gz)
+* [rubert_telegram_headlines](https://huggingface.co/IlyaGusev/rubert_telegram_headlines)
 
 Prediction script:
 ```
