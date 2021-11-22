@@ -3,82 +3,12 @@ import random
 import json
 
 import torch
-from torch.utils.data import Dataset
 from tqdm import tqdm
-from transformers import AutoTokenizer, EncoderDecoderModel, Trainer, TrainingArguments
-from transformers import logging, T5ForConditionalGeneration
+from transformers import AutoTokenizer, Trainer, TrainingArguments, logging
+from transformers import EncoderDecoderModel, T5ForConditionalGeneration, AutoModelForCausalLM
 
-
-def convert_to_tensors(
-    tokenizer,
-    text,
-    max_source_tokens_count,
-    max_target_tokens_count = None,
-    summary = None
-):
-    inputs = tokenizer(
-        text,
-        add_special_tokens=True,
-        max_length=max_source_tokens_count,
-        padding="max_length",
-        truncation=True,
-        return_tensors="pt"
-    )
-    inputs = {k: v.squeeze(0) for k, v in inputs.items()}
-    if summary is not None:
-        outputs = tokenizer(
-            summary,
-            add_special_tokens=True,
-            max_length=max_target_tokens_count,
-            padding="max_length",
-            truncation=True,
-            return_tensors="pt"
-        )
-        labels = outputs["input_ids"].squeeze(0)
-        labels[outputs["attention_mask"].squeeze(0) == 0] = -100
-        inputs["labels"] = labels
-    return inputs
-
-
-class SummaryDataset(Dataset):
-    def __init__(
-        self,
-        original_records,
-        sample_rate,
-        tokenizer,
-        max_source_tokens_count,
-        max_target_tokens_count
-    ):
-        self.original_records = original_records
-        self.sample_rate = sample_rate
-        self.tokenizer = tokenizer
-        self.max_source_tokens_count = max_source_tokens_count
-        self.max_target_tokens_count = max_target_tokens_count
-
-        self.records = []
-        for record in tqdm(original_records):
-            if random.random() > self.sample_rate:
-                continue
-            tensors = convert_to_tensors(
-                tokenizer=tokenizer,
-                summary=record["summary"],
-                text=record["text"],
-                max_target_tokens_count=self.max_target_tokens_count,
-                max_source_tokens_count=self.max_source_tokens_count
-            )
-            self.records.append(tensors)
-
-    def __len__(self):
-        return len(self.records)
-
-    def __getitem__(self, index):
-        return self.records[index]
-
-
-def read_jsonl(file_path):
-    with open(file_path) as r:
-        for line in r:
-            yield json.loads(line)
+from dataset import SummarySeq2SeqDataset, SummaryLMDataset
+from util import read_jsonl
 
 
 def train(
@@ -91,42 +21,78 @@ def train(
     output_dir,
     report_to,
     model_type,
-    model_name
+    model_name,
+    seed
 ):
     logging.set_verbosity_info()
     with open(config_file, "r") as r:
         config = json.load(r)
 
-    max_source_tokens_count = config["max_source_tokens_count"]
-    max_target_tokens_count = config["max_target_tokens_count"]
+    tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, strip_accents=False)
+
+    # Fixing broken tokenizers
+    special_tokens = dict()
+    for token_id in range(1000):
+        token = tokenizer.convert_ids_to_tokens(token_id)
+        if tokenizer.pad_token_id in (None, tokenizer.vocab_size) and "pad" in token:
+            special_tokens["pad_token"] = token
+        if tokenizer.bos_token_id in (None, tokenizer.vocab_size) and "<s>" in token:
+            special_tokens["bos_token"] = token
+        if tokenizer.eos_token_id in (None, tokenizer.vocab_size) and "</s>" in token:
+            special_tokens["eos_token"] = token
+        if tokenizer.unk_token_id in (None, tokenizer.vocab_size) and "unk" in token:
+            special_tokens["unk_token"] = token
+        if tokenizer.sep_token_id in (None, tokenizer.vocab_size) and "sep" in token:
+            special_tokens["sep_token"] = token
+
+    if tokenizer.sep_token_id in (None, tokenizer.vocab_size) and "bos_token" in special_tokens:
+        special_tokens["sep_token"] = special_tokens["bos_token"]
+
+    tokenizer.add_special_tokens(special_tokens)
+
+    print("Vocab size: ", tokenizer.vocab_size)
+    print("PAD: ", tokenizer.pad_token_id, tokenizer.pad_token)
+    print("BOS: ", tokenizer.bos_token_id, tokenizer.bos_token)
+    print("EOS: ", tokenizer.eos_token_id, tokenizer.eos_token)
+    print("UNK: ", tokenizer.unk_token_id, tokenizer.unk_token)
+    print("SEP: ", tokenizer.sep_token_id, tokenizer.sep_token)
 
     # Data preparation
     train_records = list(read_jsonl(train_file))
+    val_records = list(read_jsonl(val_file))
     random.shuffle(train_records)
 
-    val_records = list(read_jsonl(val_file))
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, strip_accents=False)
-    train_dataset = SummaryDataset(
-        train_records,
-        train_sample_rate,
-        tokenizer,
-        max_source_tokens_count=max_source_tokens_count,
-        max_target_tokens_count=max_target_tokens_count
-    )
-    val_dataset = SummaryDataset(
-        val_records,
-        val_sample_rate,
-        tokenizer,
-        max_source_tokens_count=max_source_tokens_count,
-        max_target_tokens_count=max_target_tokens_count
-    )
+    dataset_class = SummaryLMDataset if model_type in ("causal_lm",) else SummarySeq2SeqDataset
+    max_source_tokens_count = config["max_source_tokens_count"]
+    max_target_tokens_count = config["max_target_tokens_count"]
+    only_summary_loss = config.get("only_summary_loss", False)
+    train_dataset_args = {
+        "original_records": train_records,
+        "sample_rate": train_sample_rate,
+        "tokenizer": tokenizer,
+        "max_source_tokens_count": max_source_tokens_count,
+        "max_target_tokens_count": max_target_tokens_count
+    }
+    val_dataset_args = {
+        "original_records": val_records,
+        "sample_rate": val_sample_rate,
+        "tokenizer": tokenizer,
+        "max_source_tokens_count": max_source_tokens_count,
+        "max_target_tokens_count": max_target_tokens_count
+    }
+    if only_summary_loss:
+        train_dataset_args["only_summary_loss"] = True
+        val_dataset_args["only_summary_loss"] = True
+    train_dataset = dataset_class(**train_dataset_args)
+    val_dataset = dataset_class(**val_dataset_args)
 
     # Model loading
     if model_type == "encoder_decoder":
         model = EncoderDecoderModel.from_encoder_decoder_pretrained(model_name, model_name)
     elif model_type == "t5":
         model = T5ForConditionalGeneration.from_pretrained(model_name)
+    elif model_type == "causal_lm":
+        model = AutoModelForCausalLM.from_pretrained(model_name)
     else:
         assert False
 
@@ -154,6 +120,13 @@ def train(
             break
     assert model.config.eos_token_id is not None
 
+    # Default model generation params
+    model.config.num_beams = 5
+    model.config.max_length = max_target_tokens_count
+    if model_type == "causal_lm":
+        model.config.max_length = max_target_tokens_count + max_source_tokens_count
+
+    # Training
     batch_size = config["batch_size"]
     gradient_accumulation_steps = config["gradient_accumulation_steps"]
     logging_steps = config["logging_steps"]
@@ -163,7 +136,6 @@ def train(
     warmup_steps = config["warmup_steps"]
     num_train_epochs = config["num_train_epochs"]
 
-    # Training
     training_args = TrainingArguments(
         output_dir=output_dir,
         per_device_train_batch_size=batch_size,
@@ -201,8 +173,9 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=str, required=True)
     parser.add_argument("--train-sample-rate", type=float, default=1.0)
     parser.add_argument("--val-sample-rate", type=float, default=1.0)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--report-to", type=str, default="none")
-    parser.add_argument("--model-type", type=str, required=True)
+    parser.add_argument("--model-type", type=str, required=True, choices=("causal_lm", "encoder_decoder", "t5"))
     parser.add_argument("--model-name", type=str, required=True)
     args = parser.parse_args()
     train(**vars(args))

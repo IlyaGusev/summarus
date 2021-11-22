@@ -1,0 +1,12 @@
+{
+    "batch_size": 4,
+    "learning_rate": 0.0004,
+    "num_train_epochs": 8,
+    "gradient_accumulation_steps": 64,
+    "max_target_tokens_count": 200,
+    "max_source_tokens_count": 400,
+    "logging_steps": 25,
+    "save_steps": 250,
+    "eval_steps": 250,
+    "warmup_steps": 100
+}

@@ -3,24 +3,10 @@ import json
 import itertools
 
 import torch
-from transformers import AutoTokenizer, AutoModel, T5ForConditionalGeneration, EncoderDecoderModel
+from transformers import AutoTokenizer, T5ForConditionalGeneration, EncoderDecoderModel, AutoModelForCausalLM
 from tqdm import tqdm
 
-
-def read_jsonl(file_path):
-    with open(file_path) as r:
-        for line in r:
-            yield json.loads(line)
-
-
-def gen_batch(records, batch_size):
-    batch_start = 0
-    while batch_start < len(records):
-        batch_end = batch_start + batch_size
-        batch = records[batch_start: batch_end]
-        batch_start = batch_end
-        yield batch
-
+from util import read_jsonl, gen_batch
 
 def predict(
     nrows,
@@ -29,14 +15,19 @@ def predict(
     input_file,
     output_file,
     batch_size,
-    max_source_tokens_count,
-    max_target_tokens_count
+    max_source_tokens_count
 ):
+    is_causal_lm = (model_type == "causal_lm")
+    if is_causal_lm:
+        assert batch_size == 1, "For causal LM only batch_size == 1 is supported!"
+
     tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, strip_accents=False)
     if model_type == "t5":
         model = T5ForConditionalGeneration.from_pretrained(model_name)
     elif model_type == "encoder_decoder":
         model = EncoderDecoderModel.from_pretrained(model_name)
+    elif model_type == "causal_lm":
+        model = AutoModelForCausalLM.from_pretrained(model_name)
     else:
         assert False
 
@@ -49,28 +40,46 @@ def predict(
         records = records[:nrows]
 
     summaries = []
-    for batch in tqdm(gen_batch(records, batch_size)):
-        texts = [r["text"] for r in batch]
-        input_ids = tokenizer(
-            texts,
-            add_special_tokens=True,
-            max_length=max_source_tokens_count,
-            padding="max_length",
-            truncation=True,
-            return_tensors="pt",
-        )["input_ids"].to(device)
-
-        output_ids = model.generate(
-            input_ids=input_ids,
-            max_length=max_target_tokens_count,
-            no_repeat_ngram_size=3,
-            num_beams=5,
-            early_stopping=True
-        )
-
-        for ids in output_ids:
-            summary = tokenizer.decode(ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+    if is_causal_lm:
+        for r in tqdm(records):
+            text_tokens = tokenizer(
+                r["text"],
+                add_special_tokens=False,
+                max_length=max_source_tokens_count,
+                padding=False,
+                truncation=True
+            )["input_ids"]
+            input_ids = text_tokens + [tokenizer.sep_token_id]
+            input_ids = torch.LongTensor([input_ids]).to(device)
+            output_ids = model.generate(
+                input_ids=input_ids,
+                no_repeat_ngram_size=3,
+                early_stopping=True
+            )
+            summary = tokenizer.decode(output_ids[0], skip_special_tokens=False, clean_up_tokenization_spaces=True)
+            summary = summary.split(tokenizer.sep_token)[1]
+            summary = summary.split(tokenizer.eos_token)[0]
             summaries.append(summary)
+    else:
+        for batch in tqdm(gen_batch(records, batch_size)):
+            texts = [r["text"] for r in batch]
+            input_ids = tokenizer(
+                texts,
+                add_special_tokens=True,
+                max_length=max_source_tokens_count,
+                padding="max_length",
+                truncation=True,
+                return_tensors="pt",
+            )["input_ids"].to(device)
+            output_ids = model.generate(
+                input_ids=input_ids,
+                no_repeat_ngram_size=3,
+                early_stopping=True
+            )
+
+            for ids in output_ids:
+                summary = tokenizer.decode(ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+                summaries.append(summary)
 
     with open(output_file, "w") as w:
         for s in summaries:
@@ -82,9 +91,8 @@ if __name__ == "__main__":
     parser.add_argument("--output-file", type=str, required=True)
     parser.add_argument("--nrows", type=int, default=None)
     parser.add_argument("--model-name", type=str, required=True)
-    parser.add_argument("--model-type", type=str, required=True)
-    parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--model-type", type=str, required=True, choices=("causal_lm", "encoder_decoder", "t5"))
+    parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--max-source-tokens-count", type=int, default=400)
-    parser.add_argument("--max-target-tokens-count", type=int, default=200)
     args = parser.parse_args()
     predict(**vars(args))
