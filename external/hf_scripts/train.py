@@ -8,7 +8,7 @@ from transformers import AutoTokenizer, Trainer, TrainingArguments, logging
 from transformers import EncoderDecoderModel, T5ForConditionalGeneration, AutoModelForCausalLM
 
 from dataset import SummarySeq2SeqDataset, SummaryLMDataset
-from util import read_jsonl
+from util import read_jsonl, set_random_seed, fix_tokenizer
 
 
 def train(
@@ -20,42 +20,18 @@ def train(
     val_sample_rate,
     output_dir,
     report_to,
-    model_type,
-    model_name,
     seed
 ):
+    set_random_seed(seed)
     logging.set_verbosity_info()
     with open(config_file, "r") as r:
         config = json.load(r)
 
+    model_type = config["model_type"]
+    assert model_type in ("causal_lm", "encoder_decoder", "t5")
+    model_name = config["model_name"]
     tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, strip_accents=False)
-
-    # Fixing broken tokenizers
-    special_tokens = dict()
-    for token_id in range(1000):
-        token = tokenizer.convert_ids_to_tokens(token_id)
-        if tokenizer.pad_token_id in (None, tokenizer.vocab_size) and "pad" in token:
-            special_tokens["pad_token"] = token
-        if tokenizer.bos_token_id in (None, tokenizer.vocab_size) and "<s>" in token:
-            special_tokens["bos_token"] = token
-        if tokenizer.eos_token_id in (None, tokenizer.vocab_size) and "</s>" in token:
-            special_tokens["eos_token"] = token
-        if tokenizer.unk_token_id in (None, tokenizer.vocab_size) and "unk" in token:
-            special_tokens["unk_token"] = token
-        if tokenizer.sep_token_id in (None, tokenizer.vocab_size) and "sep" in token:
-            special_tokens["sep_token"] = token
-
-    if tokenizer.sep_token_id in (None, tokenizer.vocab_size) and "bos_token" in special_tokens:
-        special_tokens["sep_token"] = special_tokens["bos_token"]
-
-    tokenizer.add_special_tokens(special_tokens)
-
-    print("Vocab size: ", tokenizer.vocab_size)
-    print("PAD: ", tokenizer.pad_token_id, tokenizer.pad_token)
-    print("BOS: ", tokenizer.bos_token_id, tokenizer.bos_token)
-    print("EOS: ", tokenizer.eos_token_id, tokenizer.eos_token)
-    print("UNK: ", tokenizer.unk_token_id, tokenizer.unk_token)
-    print("SEP: ", tokenizer.sep_token_id, tokenizer.sep_token)
+    tokenizer = fix_tokenizer(tokenizer)
 
     # Data preparation
     train_records = list(read_jsonl(train_file))
@@ -175,7 +151,5 @@ if __name__ == "__main__":
     parser.add_argument("--val-sample-rate", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--report-to", type=str, default="none")
-    parser.add_argument("--model-type", type=str, required=True, choices=("causal_lm", "encoder_decoder", "t5"))
-    parser.add_argument("--model-name", type=str, required=True)
     args = parser.parse_args()
     train(**vars(args))

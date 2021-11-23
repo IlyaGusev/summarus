@@ -8,5 +8,7 @@
     "logging_steps": 25,
     "save_steps": 250,
     "eval_steps": 250,
-    "warmup_steps": 100
+    "warmup_steps": 100,
+    "model_type": "t5",
+    "model_name": "cointegrated/rut5-base"
 }

@@ -6,7 +6,7 @@ import torch
 from transformers import AutoTokenizer, T5ForConditionalGeneration, EncoderDecoderModel, AutoModelForCausalLM
 from tqdm import tqdm
 
-from util import read_jsonl, gen_batch
+from util import read_jsonl, gen_batch, set_random_seed
 
 def predict(
     nrows,
@@ -15,8 +15,10 @@ def predict(
     input_file,
     output_file,
     batch_size,
-    max_source_tokens_count
+    max_source_tokens_count,
+    seed
 ):
+    set_random_seed(seed)
     is_causal_lm = (model_type == "causal_lm")
     if is_causal_lm:
         assert batch_size == 1, "For causal LM only batch_size == 1 is supported!"
@@ -93,6 +95,7 @@ if __name__ == "__main__":
     parser.add_argument("--model-name", type=str, required=True)
     parser.add_argument("--model-type", type=str, required=True, choices=("causal_lm", "encoder_decoder", "t5"))
     parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-source-tokens-count", type=int, default=400)
     args = parser.parse_args()
     predict(**vars(args))
