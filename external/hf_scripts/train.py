@@ -5,7 +5,7 @@ import json
 import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, Trainer, TrainingArguments, logging
-from transformers import EncoderDecoderModel, T5ForConditionalGeneration, AutoModelForCausalLM
+from transformers import EncoderDecoderModel, AutoModelForSeq2SeqLM, AutoModelForCausalLM
 
 from dataset import SummarySeq2SeqDataset, SummaryLMDataset
 from util import read_jsonl, set_random_seed, fix_tokenizer
@@ -28,7 +28,7 @@ def train(
         config = json.load(r)
 
     model_type = config["model_type"]
-    assert model_type in ("causal_lm", "encoder_decoder", "t5")
+    assert model_type in ("causal_lm", "encoder_decoder", "seq2seq_lm")
     model_name = config["model_name"]
     tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, strip_accents=False)
     tokenizer = fix_tokenizer(tokenizer)
@@ -65,8 +65,8 @@ def train(
     # Model loading
     if model_type == "encoder_decoder":
         model = EncoderDecoderModel.from_encoder_decoder_pretrained(model_name, model_name)
-    elif model_type == "t5":
-        model = T5ForConditionalGeneration.from_pretrained(model_name)
+    elif model_type == "seq2seq_lm":
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
     elif model_type == "causal_lm":
         model = AutoModelForCausalLM.from_pretrained(model_name)
     else:

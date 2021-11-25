@@ -1,5 +1,6 @@
 import os
 from collections import Counter
+from statistics import mean
 
 from true_rouge import Rouge
 from nltk.translate.bleu_score import corpus_bleu
@@ -82,6 +83,8 @@ def calc_metrics(
         metrics["bert_score_{}".format(hash_code)] = bert_scores
     if metric in ("chrf", "all"):
         metrics["chrf"] = corpus_chrf(refs, hyps, beta=1.0)
+    if metric in ("length", "all"):
+        metrics["length"] = mean([len(h) for h in hyps])
     return metrics
 
 
@@ -107,6 +110,8 @@ def print_metrics(refs, hyps, language, metric="all", meteor_jar=None):
         print("Dup 1-grams:\t{:3.1f}".format(metrics["duplicate_ngrams"][1] * 100.0))
         print("Dup 2-grams:\t{:3.1f}".format(metrics["duplicate_ngrams"][2] * 100.0))
         print("Dup 3-grams:\t{:3.1f}".format(metrics["duplicate_ngrams"][3] * 100.0))
+    if "length" in metrics:
+        print("Avg length:\t{:3.1f}".format(metrics["length"]))
     for key, value in metrics.items():
         if "bert_score" not in key:
             continue
