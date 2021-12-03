@@ -2,6 +2,7 @@ import random
 from typing import List, Dict
 
 import torch
+import torch.nn.functional as F
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 from tqdm import tqdm
@@ -109,3 +110,65 @@ class SummaryLMDataset(SummaryDataset):
             "labels": labels,
             "attention_mask": attention_mask
         }
+
+
+class SummaryExtractiveDataset(Dataset):
+    def __init__(
+        self,
+        original_records: List[Dict],
+        sample_rate: float,
+        tokenizer: AutoTokenizer,
+        max_source_tokens_count: int,
+        max_source_sentences_count: int
+    ):
+        self.original_records = original_records
+        self.sample_rate = sample_rate
+        self.tokenizer = tokenizer
+        self.max_source_tokens_count = max_source_tokens_count
+        self.max_source_sentences_count = max_source_sentences_count
+
+        self.records = []
+        for record in tqdm(original_records):
+            sentences = record["sentences"]
+            oracle_labels = record.get("oracle")
+            if random.random() > self.sample_rate:
+                continue
+            tensors = self.convert(sentences, oracle_labels)
+            self.records.append(tensors)
+
+    def __len__(self):
+        return len(self.records)
+
+    def __getitem__(self, index):
+        return self.records[index]
+
+    def convert(self, sentences, labels):
+        text = self.tokenizer.sep_token.join(sentences)
+        inputs = self.tokenizer(
+            text,
+            add_special_tokens=True,
+            max_length=self.max_source_tokens_count,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt"
+        )
+        inputs = {k: v.squeeze(0) for k, v in inputs.items()}
+        sep_token_id = self.tokenizer.sep_token_id
+        input_ids = inputs["input_ids"]
+
+        # Fix token_type_ids
+        current_token_type_id = 0
+        inputs["token_type_ids"] = input_ids.new_zeros(input_ids.size())
+        for pos, input_id in enumerate(input_ids):
+            inputs["token_type_ids"][pos] = current_token_type_id
+            if input_id == sep_token_id:
+                current_token_type_id = 1 - current_token_type_id
+
+        # Get labels
+        if labels is not None:
+            labels = labels[:self.max_source_sentences_count]
+            padding_size = self.max_source_sentences_count - len(labels)
+            labels = torch.LongTensor(labels)
+            labels = F.pad(labels, pad=(0, padding_size), mode="constant", value=-100)
+            inputs["labels"] = labels
+        return inputs
