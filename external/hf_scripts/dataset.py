@@ -119,13 +119,15 @@ class SummaryExtractiveDataset(Dataset):
         sample_rate: float,
         tokenizer: AutoTokenizer,
         max_source_tokens_count: int,
-        max_source_sentences_count: int
+        max_source_sentences_count: int = None,
+        use_token_level: bool = False
     ):
         self.original_records = original_records
         self.sample_rate = sample_rate
         self.tokenizer = tokenizer
         self.max_source_tokens_count = max_source_tokens_count
         self.max_source_sentences_count = max_source_sentences_count
+        self.use_token_level = use_token_level
 
         self.records = []
         for record in tqdm(original_records):
@@ -166,9 +168,15 @@ class SummaryExtractiveDataset(Dataset):
 
         # Get labels
         if labels is not None:
-            labels = labels[:self.max_source_sentences_count]
-            padding_size = self.max_source_sentences_count - len(labels)
-            labels = torch.LongTensor(labels)
-            labels = F.pad(labels, pad=(0, padding_size), mode="constant", value=-100)
-            inputs["labels"] = labels
+            if not self.use_token_level:
+                labels = labels[:self.max_source_sentences_count]
+                padding_size = self.max_source_sentences_count - len(labels)
+                labels_tensor = torch.LongTensor(labels)
+                labels_tensor = F.pad(labels_tensor, pad=(0, padding_size), mode="constant", value=-100)
+            else:
+                indices = [index for index, token_id in enumerate(input_ids) if token_id == sep_token_id]
+                labels_tensor = input_ids.new_full(input_ids.size(), -100)
+                for index, label in zip(indices, labels):
+                    labels_tensor[index] = label
+            inputs["labels"] = labels_tensor
         return inputs

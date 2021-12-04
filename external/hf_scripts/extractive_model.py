@@ -1,11 +1,12 @@
 import copy
 import torch
+from torch.nn.functional import pad
 from transformers import PretrainedConfig, PreTrainedModel
 from transformers import AutoConfig, AutoModel, AutoModelForTokenClassification
 
 
 class ModelForSentencesClassificationConfig(PretrainedConfig):
-    model_type = "bert-model-for-sentences-classification"
+    model_type = "model-for-sentences-classification"
     is_composition = True
 
     def __init__(self, tokens_model_config, sentences_model_config, **kwargs):
@@ -35,6 +36,7 @@ class ModelForSentencesClassificationConfig(PretrainedConfig):
 
 class ModelForSentencesClassification(PreTrainedModel):
     config_class = ModelForSentencesClassificationConfig
+    base_model_prefix = "model_for_sentences_classification"
 
     def __init__(
         self,
@@ -43,8 +45,8 @@ class ModelForSentencesClassification(PreTrainedModel):
         sentences_model=None
     ):
         assert config is not None or (
-            encoder is not None and decoder is not None
-        ), "Either a configuration or an Encoder and a decoder has to be provided"
+            tokens_model is not None and sentences_model is not None
+        ), "Either a configuration or both models has to be provided"
         if config is None:
             config = ModelForSentencesClassificationConfig.from_configs(
                 tokens_model.config, sentences_model.config
@@ -53,45 +55,51 @@ class ModelForSentencesClassification(PreTrainedModel):
 
         if tokens_model is None:
             tokens_model = AutoModel.from_config(config.tokens_model_config)
-
         if sentences_model is None:
             sentences_model = AutoModelForTokenClassification.from_config(config.sentences_model_config)
 
         self.tokens_model = tokens_model
         self.sentences_model = sentences_model
-
         self.tokens_model.config = self.config.tokens_model_config
         self.sentences_model.config = self.config.sentences_model_config
-
-        self.num_labels = config.num_labels
 
     def forward(
         self,
         input_ids=None,
-        labels=None,
-        return_dict=None,
-        **kwargs
+        attention_mask=None,
+        token_type_ids=None,
+        labels=None
     ):
         assert self.config.sep_token_id >= 0
         assert self.config.max_sentences_count > 0
 
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        batch_size = input_ids.size(0)
+        sep_token_id = self.config.sep_token_id
+        max_sentences_count = self.config.max_sentences_count
+        sentence_token_mask = input_ids == sep_token_id
+
+        clss = input_ids.new_zeros((batch_size, max_sentences_count))
+        for i, sample_ids in enumerate(input_ids):
+            ids = (sample_ids == sep_token_id).nonzero().squeeze(1)
+            ids = ids[:max_sentences_count]
+            clss[i, :ids.size(0)] = ids
+        mask_cls = (clss != 0).long()
+
         outputs = self.tokens_model(
-            input_ids,
-            return_dict=return_dict,
-            **kwargs
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            return_dict=True
         )
-        sequence_output = outputs[0]
-        sep_indices = input_ids == self.config.sep_token_id
+        last_hidden_state = outputs.last_hidden_state
+        sentences_states = last_hidden_state[torch.arange(batch_size).unsqueeze(1), clss]
+        sentences_states = sentences_states * mask_cls[:, :, None].float()
 
-        batch_size = sequence_output.size(0)
-        sentences_shape = (batch_size, self.config.max_sentences_count, self.config.tokens_model_config.hidden_size)
-        sentences_states = sequence_output.new_zeros(sentences_shape)
-        for i in range(batch_size):
-            sentences_count = min(torch.sum(sep_indices[i]), self.config.max_sentences_count)
-            sentences_states[i][:sentences_count] = sequence_output[i][sep_indices[i]][:sentences_count]
-
-        outputs = self.sentences_model(inputs_embeds=sentences_states, labels=labels, return_dict=return_dict)
+        outputs = self.sentences_model(
+            inputs_embeds=sentences_states,
+            attention_mask=mask_cls,
+            labels=labels
+        )
         return outputs
 
     @classmethod
@@ -101,3 +109,7 @@ class ModelForSentencesClassification(PreTrainedModel):
         config = ModelForSentencesClassificationConfig.from_configs(tokens_model.config, sentences_model_config)
         return cls(tokens_model=tokens_model, config=config)
 
+    @classmethod
+    def from_pretrained(cls, *args, **kwargs):
+        kwargs["_fast_init"] = False
+        return super().from_pretrained(*args, **kwargs)

@@ -3,9 +3,10 @@ import razdel
 
 import torch
 from tqdm import tqdm
-from transformers import AutoTokenizer, logging
+from transformers import logging
+from transformers import AutoTokenizer, AutoConfig, BertForTokenClassification
 
-from extractive_model import ModelForSentencesClassification
+from extractive_model import ModelForSentencesClassification, ModelForSentencesClassificationConfig
 from dataset import SummaryExtractiveDataset
 from util import read_jsonl, set_random_seed, gen_batch
 
@@ -17,12 +18,17 @@ def predict(
     output_file,
     batch_size,
     max_source_tokens_count,
-    max_source_sentences_count,
     seed,
 ):
     set_random_seed(seed)
+    logging.set_verbosity_info()
+    AutoConfig.register("model-for-sentences-classification", ModelForSentencesClassificationConfig)
     tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, strip_accents=False)
-    model = ModelForSentencesClassification.from_pretrained(model_name)
+    config = AutoConfig.from_pretrained(model_name)
+    if config.model_type == "model-for-sentences-classification":
+        model = ModelForSentencesClassification.from_pretrained(model_name)
+    else:
+        model = BertForTokenClassification.from_pretrained(model_name)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
@@ -34,7 +40,11 @@ def predict(
 
     summaries = []
     for batch in tqdm(gen_batch(records, batch_size)):
-        sentences_batch = [[s.text for s in razdel.sentenize(r["text"])] for r in batch]
+        sentences_batch = []
+        for r in batch:
+            sentences = [s.text for s in razdel.sentenize(r["text"])]
+            sentences = sentences[:model.config.max_sentences_count]
+            sentences_batch.append(sentences)
         texts = [tokenizer.sep_token.join(sentences) for sentences in sentences_batch]
         inputs = tokenizer(
             texts,
@@ -45,6 +55,7 @@ def predict(
             return_tensors="pt",
         )
         sep_token_id = tokenizer.sep_token_id
+        sentence_token_mask = inputs["input_ids"] == sep_token_id
 
         # Fix token_type_ids
         for seq_num, seq in enumerate(inputs["input_ids"]):
@@ -53,7 +64,6 @@ def predict(
                 inputs["token_type_ids"][seq_num][pos] = current_token_type_id
                 if input_id == sep_token_id:
                     current_token_type_id = 1 - current_token_type_id
-
         input_ids = inputs["input_ids"].to(device)
         attention_mask = inputs["attention_mask"].to(device)
         token_type_ids = inputs["token_type_ids"].to(device)
@@ -63,13 +73,15 @@ def predict(
             token_type_ids=token_type_ids
         )
         logits = outputs.logits[:, :, 1]
-        for sample_logits, sentences in zip(logits, sentences_batch):
-            sample_logits = sample_logits[:len(sentences)]
-            #indices = [i for i, logit in enumerate(sample_logits) if logit >= 0.0]
-            #if not indices:
-            indices = sorted(torch.topk(sample_logits, 3).indices.cpu().numpy().tolist())
+        for sample_logits, sentences, sample_sentence_token_mask in zip(logits, sentences_batch, sentence_token_mask):
+            if config.model_type == "model-for-sentences-classification":
+                sentences_count = min(torch.sum(sample_sentence_token_mask).item(), config.max_sentences_count)
+                sentences_logits = sample_logits[:sentences_count]
+            else:
+                sentences_logits = sample_logits[sample_sentence_token_mask]
+            indices = sorted(torch.topk(sentences_logits, 3).indices.cpu().numpy().tolist())
+            print(indices)
             summary = " ".join([sentences[idx] for idx in indices])
-            print(summary)
             summaries.append(summary)
 
     with open(output_file, "w") as w:
@@ -85,7 +97,6 @@ if __name__ == "__main__":
     parser.add_argument("--model-name", type=str, required=True)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--max-source-tokens-count", type=int, default=500)
-    parser.add_argument("--max-source-sentences-count", type=int, default=40)
+    parser.add_argument("--max-source-tokens-count", type=int, default=510)
     args = parser.parse_args()
     predict(**vars(args))

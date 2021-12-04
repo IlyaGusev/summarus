@@ -3,7 +3,8 @@ import random
 import json
 
 import torch.nn as nn
-from transformers import AutoTokenizer, Trainer, TrainingArguments, logging, BertConfig
+from transformers import AutoTokenizer, Trainer, TrainingArguments, logging
+from transformers import BertConfig, BertForTokenClassification
 
 from extractive_model import ModelForSentencesClassification, ModelForSentencesClassificationConfig
 from dataset import SummaryExtractiveDataset
@@ -37,44 +38,41 @@ def train(
 
     dataset_class = SummaryExtractiveDataset
     max_source_tokens_count = config["max_source_tokens_count"]
-    max_source_sentences_count = config["max_source_sentences_count"]
+    max_source_sentences_count = config.get("max_source_sentences_count")
+    is_token_level = "sentences_model" not in config
     train_dataset_args = {
         "original_records": train_records,
         "sample_rate": train_sample_rate,
         "tokenizer": tokenizer,
         "max_source_tokens_count": max_source_tokens_count,
-        "max_source_sentences_count": max_source_sentences_count
+        "max_source_sentences_count": max_source_sentences_count,
+        "use_token_level": is_token_level
     }
     val_dataset_args = {
         "original_records": val_records,
         "sample_rate": val_sample_rate,
         "tokenizer": tokenizer,
         "max_source_tokens_count": max_source_tokens_count,
-        "max_source_sentences_count": max_source_sentences_count
+        "max_source_sentences_count": max_source_sentences_count,
+        "use_token_level": is_token_level
     }
     train_dataset = dataset_class(**train_dataset_args)
     val_dataset = dataset_class(**val_dataset_args)
 
     # Model loading
-    sentences_model_config = BertConfig(**config["sentences_model"])
-    model = ModelForSentencesClassification.from_parts_pretrained(
-        tokens_model_name=tokens_model_name,
-        sentences_model_config=sentences_model_config
-    )
+    if is_token_level:
+        model = BertForTokenClassification.from_pretrained(tokens_model_name)
+    else:
+        sentences_model_config = BertConfig(**config["sentences_model"])
+        model = ModelForSentencesClassification.from_parts_pretrained(
+            tokens_model_name=tokens_model_name,
+            sentences_model_config=sentences_model_config
+        )
 
     # Fix model
     model.config.sep_token_id = tokenizer.sep_token_id
     model.config.max_sentences_count = max_source_sentences_count
-    if "roberta" in tokens_model_name.lower():
-        tokens_model = model.tokens_model
-        tokens_model.type_vocab_size = 2
-        tokens_model.embeddings.token_type_embeddings = nn.Embedding(2, tokens_model.config.hidden_size)
-        tokens_model.embeddings.token_type_embeddings.weight.data.normal_(
-            mean=0.0,
-            std=tokens_model.config.initializer_range
-        )
     assert model.config.sep_token_id is not None
-    assert model.config.max_sentences_count
 
     # Training
     batch_size = config["batch_size"]
