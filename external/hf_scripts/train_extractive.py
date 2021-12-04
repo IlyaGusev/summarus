@@ -2,7 +2,6 @@ import argparse
 import random
 import json
 
-import torch.nn as nn
 from transformers import AutoTokenizer, Trainer, TrainingArguments, logging
 from transformers import BertConfig, BertForTokenClassification
 

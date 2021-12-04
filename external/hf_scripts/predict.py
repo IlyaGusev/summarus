@@ -92,6 +92,7 @@ def predict(
         for s in summaries:
             w.write(s.strip() + "\n")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input-file", type=str, required=True)

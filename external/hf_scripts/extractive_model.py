@@ -1,4 +1,5 @@
 import copy
+
 import torch
 from torch.nn.functional import pad
 from transformers import PretrainedConfig, PreTrainedModel
@@ -33,6 +34,7 @@ class ModelForSentencesClassificationConfig(PretrainedConfig):
         output["model_type"] = self.__class__.model_type
         return output
 
+AutoConfig.register("model-for-sentences-classification", ModelForSentencesClassificationConfig)
 
 class ModelForSentencesClassification(PreTrainedModel):
     config_class = ModelForSentencesClassificationConfig
@@ -76,14 +78,13 @@ class ModelForSentencesClassification(PreTrainedModel):
         batch_size = input_ids.size(0)
         sep_token_id = self.config.sep_token_id
         max_sentences_count = self.config.max_sentences_count
-        sentence_token_mask = input_ids == sep_token_id
 
-        clss = input_ids.new_zeros((batch_size, max_sentences_count))
+        sep_indices = input_ids.new_zeros((batch_size, max_sentences_count))
         for i, sample_ids in enumerate(input_ids):
             ids = (sample_ids == sep_token_id).nonzero().squeeze(1)
             ids = ids[:max_sentences_count]
-            clss[i, :ids.size(0)] = ids
-        mask_cls = (clss != 0).long()
+            sep_indices[i, :ids.size(0)] = ids
+        mask_sep = (sep_indices != 0).long()
 
         outputs = self.tokens_model(
             input_ids=input_ids,
@@ -92,19 +93,18 @@ class ModelForSentencesClassification(PreTrainedModel):
             return_dict=True
         )
         last_hidden_state = outputs.last_hidden_state
-        sentences_states = last_hidden_state[torch.arange(batch_size).unsqueeze(1), clss]
-        sentences_states = sentences_states * mask_cls[:, :, None].float()
+        sentences_states = last_hidden_state[torch.arange(batch_size).unsqueeze(1), sep_indices]
+        sentences_states = sentences_states * mask_sep[:, :, None].float()
 
         outputs = self.sentences_model(
             inputs_embeds=sentences_states,
-            attention_mask=mask_cls,
+            attention_mask=mask_sep,
             labels=labels
         )
         return outputs
 
     @classmethod
     def from_parts_pretrained(cls, tokens_model_name, sentences_model_config):
-        tokens_model_config = AutoConfig.from_pretrained(tokens_model_name)
         tokens_model = AutoModel.from_pretrained(tokens_model_name)
         config = ModelForSentencesClassificationConfig.from_configs(tokens_model.config, sentences_model_config)
         return cls(tokens_model=tokens_model, config=config)
