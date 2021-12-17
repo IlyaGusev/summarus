@@ -20,7 +20,9 @@ def train(
     val_sample_rate,
     output_dir,
     report_to,
-    seed
+    seed,
+    source_field,
+    target_field
 ):
     set_random_seed(seed)
     logging.set_verbosity_info()
@@ -47,14 +49,18 @@ def train(
         "sample_rate": train_sample_rate,
         "tokenizer": tokenizer,
         "max_source_tokens_count": max_source_tokens_count,
-        "max_target_tokens_count": max_target_tokens_count
+        "max_target_tokens_count": max_target_tokens_count,
+        "source_field": source_field,
+        "target_field": target_field
     }
     val_dataset_args = {
         "original_records": val_records,
         "sample_rate": val_sample_rate,
         "tokenizer": tokenizer,
         "max_source_tokens_count": max_source_tokens_count,
-        "max_target_tokens_count": max_target_tokens_count
+        "max_target_tokens_count": max_target_tokens_count,
+        "source_field": source_field,
+        "target_field": target_field
     }
     if only_summary_loss:
         train_dataset_args["only_summary_loss"] = True
@@ -151,5 +157,7 @@ if __name__ == "__main__":
     parser.add_argument("--val-sample-rate", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--report-to", type=str, default="none")
+    parser.add_argument("--source-field", type=str, default="text")
+    parser.add_argument("--target-field", type=str, default="summary")
     args = parser.parse_args()
     train(**vars(args))

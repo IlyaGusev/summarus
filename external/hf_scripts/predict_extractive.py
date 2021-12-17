@@ -22,7 +22,8 @@ def predict(
     threshold,
     seed,
 ):
-    assert max_target_sentences_count or threshold is not None, "Provide --sentences-count or/and --threshold"
+    assert max_target_sentences_count or threshold is not None, \
+        "Provide --max-target-sentences-count or/and --threshold"
 
     set_random_seed(seed)
     logging.set_verbosity_info()
@@ -47,7 +48,8 @@ def predict(
         batch = []
         for r in records_batch:
             sentences = [s.text for s in razdel.sentenize(r["text"])]
-            sentences = sentences[:model.config.max_sentences_count]
+            if hasattr(model.config, "max_sentences_count"):
+                sentences = sentences[:model.config.max_sentences_count]
             batch.append(sentences)
 
         sep_token = tokenizer.sep_token
@@ -76,10 +78,10 @@ def predict(
             inputs[key] = value.to(device)
         with torch.no_grad():
             outputs = model(**inputs)
-        all_logits = outputs.logits[:, :, 1]
+        include_logits = outputs.logits[:, :, 1]
 
         # Choose sentences
-        for sample_logits, sentences, sample_sep_mask in zip(all_logits, batch, sep_mask):
+        for sample_logits, sentences, sample_sep_mask in zip(include_logits, batch, sep_mask):
             if config.model_type == "model-for-sentences-classification":
                 sentences_count = torch.sum(sample_sep_mask).item()
                 sentences_count = min(sentences_count, config.max_sentences_count)
@@ -94,7 +96,7 @@ def predict(
                 pairs = [(logit, idx) for logit, idx in pairs if logit >= threshold]
             if max_target_sentences_count:
                 pairs = pairs[:max_target_sentences_count]
-            indices = [idx for _, idx in pairs]
+            indices = list(sorted([idx for _, idx in pairs]))
             summary = " ".join([sentences[idx] for idx in indices])
             summaries.append(summary)
 

@@ -15,21 +15,25 @@ class SummaryDataset(Dataset):
         sample_rate: float,
         tokenizer: AutoTokenizer,
         max_source_tokens_count: int,
-        max_target_tokens_count: int
+        max_target_tokens_count: int,
+        source_field: str = "text",
+        target_field: str = "summary"
     ):
         self.original_records = original_records
         self.sample_rate = sample_rate
         self.tokenizer = tokenizer
         self.max_source_tokens_count = max_source_tokens_count
         self.max_target_tokens_count = max_target_tokens_count
+        self.source_field = source_field
+        self.target_field = target_field
 
         self.records = []
         for record in tqdm(original_records):
             if random.random() > self.sample_rate:
                 continue
             tensors = self.convert_pair(
-                text=record["text"],
-                summary=record.get("summary")
+                text=record[source_field],
+                summary=record.get(target_field)
             )
             self.records.append(tensors)
 
@@ -120,7 +124,10 @@ class SummaryExtractiveDataset(Dataset):
         tokenizer: AutoTokenizer,
         max_source_tokens_count: int,
         max_source_sentences_count: int = None,
-        use_token_level: bool = False
+        use_token_level: bool = False,
+        tokens_label: int = -100,
+        source_field: str = "sentences",
+        target_field: str = "oracle"
     ):
         self.original_records = original_records
         self.sample_rate = sample_rate
@@ -128,11 +135,12 @@ class SummaryExtractiveDataset(Dataset):
         self.max_source_tokens_count = max_source_tokens_count
         self.max_source_sentences_count = max_source_sentences_count
         self.use_token_level = use_token_level
+        self.tokens_label = tokens_label
 
         self.records = []
         for record in tqdm(original_records):
-            sentences = record["sentences"]
-            oracle_labels = record.get("oracle")
+            sentences = record[source_field]
+            oracle_labels = record.get(target_field)
             if random.random() > self.sample_rate:
                 continue
             tensors = self.convert(sentences, oracle_labels)
@@ -175,7 +183,7 @@ class SummaryExtractiveDataset(Dataset):
                 labels_tensor = F.pad(labels_tensor, pad=(0, padding_size), mode="constant", value=-100)
             else:
                 indices = [index for index, token_id in enumerate(input_ids) if token_id == sep_token_id]
-                labels_tensor = input_ids.new_full(input_ids.size(), -100)
+                labels_tensor = input_ids.new_full(input_ids.size(), self.tokens_label)
                 for index, label in zip(indices, labels):
                     labels_tensor[index] = label
             inputs["labels"] = labels_tensor

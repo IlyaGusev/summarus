@@ -2,8 +2,9 @@ import argparse
 import random
 import json
 
+import torch.nn as nn
 from transformers import AutoTokenizer, Trainer, TrainingArguments, logging
-from transformers import BertConfig, BertForTokenClassification
+from transformers import BertConfig, AutoModelForTokenClassification
 
 from extractive_model import ModelForSentencesClassification, ModelForSentencesClassificationConfig
 from dataset import SummaryExtractiveDataset
@@ -19,7 +20,9 @@ def train(
     val_sample_rate,
     output_dir,
     report_to,
-    seed
+    seed,
+    source_field,
+    target_field
 ):
     set_random_seed(seed)
     logging.set_verbosity_info()
@@ -27,7 +30,7 @@ def train(
         config = json.load(r)
 
     tokens_model_name = config["tokens_model_name"]
-    tokenizer = AutoTokenizer.from_pretrained(tokens_model_name, do_lower_case=False, strip_accents=False)
+    tokenizer = AutoTokenizer.from_pretrained(tokens_model_name)
     tokenizer = fix_tokenizer(tokenizer)
 
     # Data preparation
@@ -38,6 +41,7 @@ def train(
     dataset_class = SummaryExtractiveDataset
     max_source_tokens_count = config["max_source_tokens_count"]
     max_source_sentences_count = config.get("max_source_sentences_count")
+    tokens_label = config.get("tokens_label", -100)
     is_token_level = "sentences_model" not in config
     train_dataset_args = {
         "original_records": train_records,
@@ -45,7 +49,10 @@ def train(
         "tokenizer": tokenizer,
         "max_source_tokens_count": max_source_tokens_count,
         "max_source_sentences_count": max_source_sentences_count,
-        "use_token_level": is_token_level
+        "use_token_level": is_token_level,
+        "tokens_label": tokens_label,
+        "source_field": source_field,
+        "target_field": target_field
     }
     val_dataset_args = {
         "original_records": val_records,
@@ -53,20 +60,28 @@ def train(
         "tokenizer": tokenizer,
         "max_source_tokens_count": max_source_tokens_count,
         "max_source_sentences_count": max_source_sentences_count,
-        "use_token_level": is_token_level
+        "use_token_level": is_token_level,
+        "tokens_label": tokens_label,
+        "source_field": source_field,
+        "target_field": target_field
     }
     train_dataset = dataset_class(**train_dataset_args)
     val_dataset = dataset_class(**val_dataset_args)
 
     # Model loading
     if is_token_level:
-        model = BertForTokenClassification.from_pretrained(tokens_model_name)
+        num_labels = config["num_labels"]
+        model = AutoModelForTokenClassification.from_pretrained(
+            tokens_model_name, num_labels=num_labels
+        )
+        tokens_model = model
     else:
         sentences_model_config = BertConfig(**config["sentences_model"])
         model = ModelForSentencesClassification.from_parts_pretrained(
             tokens_model_name=tokens_model_name,
             sentences_model_config=sentences_model_config
         )
+        tokens_model = model.tokens_model
 
     # Fix model
     model.config.sep_token_id = tokenizer.sep_token_id
@@ -122,5 +137,7 @@ if __name__ == "__main__":
     parser.add_argument("--val-sample-rate", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--report-to", type=str, default="none")
+    parser.add_argument("--source-field", type=str, default="sentences")
+    parser.add_argument("--target-field", type=str, default="oracle")
     args = parser.parse_args()
     train(**vars(args))
