@@ -2,7 +2,7 @@
 nltk >= 3.4
 razdel >= 0.4.0
 sentencepiece >= 0.1.85
-git+git://github.com/IlyaGusev/rouge.git@84f2530
+git+https://github.com/IlyaGusev/rouge.git@84f2530
 bert-score == 0.3.10
 
 # AllenNLP
