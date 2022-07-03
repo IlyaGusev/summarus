@@ -1,6 +1,5 @@
 from typing import Dict, Tuple, List
 import numpy as np
-from overrides import overrides
 
 import torch
 import torch.nn.functional as F
@@ -372,7 +371,6 @@ class PointerGeneratorNetwork(Model):
         log_probabilities = torch.log(final_dist + self._eps)
         return log_probabilities, state
 
-    @overrides
     def make_output_human_readable(self, output_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         predicted_indices = output_dict["predictions"]
         if not isinstance(predicted_indices, np.ndarray):
@@ -415,7 +413,6 @@ class PointerGeneratorNetwork(Model):
             all_predicted_tokens.append(predicted_tokens)
         return all_predicted_tokens
 
-    @overrides
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
         if not self._use_coverage:
             return {}
