@@ -1,0 +1,14 @@
+{
+    "batch_size": 8,
+    "learning_rate": 0.00002,
+    "num_train_epochs": 4,
+    "gradient_accumulation_steps": 4,
+    "max_source_tokens_count": 500,
+    "logging_steps": 100,
+    "save_steps": 500,
+    "eval_steps": 500,
+    "warmup_steps": 500,
+    "tokens_label": 2,
+    "num_labels": 3,
+    "tokens_model_name": "DeepPavlov/rubert-base-cased"
+}
